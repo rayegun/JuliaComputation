@@ -1,987 +1,1196 @@
 ### A Pluto.jl notebook ###
-# v0.19.29
+# v0.19.14
 
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 5803a81e-5b75-11ed-08ff-17c142080826
-begin
-	using BenchmarkTools
-	using CUDA
-	using CUDAKernels
-	using KernelAbstractions
-	using LinearAlgebra
-	using Plots
-	using PlutoTeachingTools
-	using PlutoUI
-	using ProgressLogging
-	using Random
-	using StaticArrays
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
 end
 
-# ╔═╡ f984ae77-cd98-4002-bdbf-c532ad9fc1c6
+# ╔═╡ 0d4205ec-fec1-4ef4-af48-7dae51ab31ee
+begin
+	using BenchmarkTools
+	using FileIO
+	using ImageIO
+	using ImageShow
+	using KrylovKit
+	using LinearAlgebra
+	using PlutoUI
+	using PlutoTeachingTools
+end
+
+# ╔═╡ d5cd95f9-6728-47e2-bba4-00298c78d50c
+student = (name = "Jazzy Doe", kerberos_id = "jazz")
+
+# ╔═╡ 1b452080-14eb-41f7-969b-e2727af54fa3
+PlutoUI.TableOfContents()
+
+# ╔═╡ 355479cd-7598-48e9-8283-da36d0e84393
+PlutoUI.Resource("https://raw.githubusercontent.com/mitmath/JuliaComputation/main/homeworks/images/lineland.png")
+
+# ╔═╡ f205fe06-9849-435f-963c-d7596592c979
+# Your code here
+
+# ╔═╡ fab7a339-a43c-4209-b15a-fe64e670636f
+if @isdefined meeting_matrix
+	let
+		p = collect(1:5) ./ 5
+		M = meeting_matrix(p)
+	end
+end
+
+# ╔═╡ fe962381-6010-4c9c-8893-c51ce0ce17e4
+function meeting_matrix5(p::Vector{R}) where {R}
+	@assert length(p) == 5
+	p̄ = one(R) .- p
+	M = [
+	zero(R)  p[1]*p[2]  p[1]*p̄[2]*p[3]  p[1]*p̄[2]*p̄[3]*p[4]  p[1]*p̄[2]*p̄[3]*p̄[4]*p[5]
+	p[2]*p[1]  zero(R)  p[2]*p[3]  p[2]*p̄[3]*p[4]  p[2]*p̄[3]*p̄[4]*p[5]
+	p[3]*p̄[2]*p[1]  p[3]*p[2]  zero(R)  p[3]*p[4]  p[3]*p̄[4]*p[5]
+	p[4]*p̄[3]*p̄[2]*p[1]  p[4]*p̄[3]*p[2]  p[4]*p[3]  zero(R) p[4]*p[5]
+	p[5]*p̄[4]*p̄[3]*p̄[2]*p[1]  p[5]*p̄[4]*p̄[3]*p[2]  p[5]*p̄[4]*p[3]  p[5]*p[4]  zero(R)
+	]
+	return M
+end
+
+# ╔═╡ f90861ce-0854-44aa-b064-d59b1d113528
+# Your code here
+
+# ╔═╡ 2bf674a4-d039-48af-8642-1160873b2f70
+# Your code here
+
+# ╔═╡ 02f7ec49-1ab9-4ae0-a3ee-baee0dd25ea6
+# Your code here
+
+# ╔═╡ 2d3f2591-3d7b-41b6-9129-777168379510
+# Your code here
+
+# ╔═╡ 8686e348-f608-4b2f-aec5-c524444d6ce5
+if @isdefined MeetingMatrix
+	let
+		p = collect(1:5) ./ 5
+		M = MeetingMatrix(p)
+	end
+end
+
+# ╔═╡ efa37d3b-b556-419e-a8ab-5e627975cca4
+# Your code here
+
+# ╔═╡ e029e040-b0f9-41ed-9474-7f31bd21bf06
+if @isdefined MeetingMatrix
+	let
+		p = collect(1:4) ./ 5
+		M = MeetingMatrix(p)
+		det(M), tr(M)
+	end
+end
+
+# ╔═╡ d3f9486e-1ad5-4062-845a-76e6cfeb715c
+# Your code here
+
+# ╔═╡ 1821f496-c065-468e-a206-c0fd2e75e539
+function multiply_neighbors_matrix(p::Vector, x)
+	return [multiply_row_neighbors_matrix(p, i, x) for i in 1:length(p)]
+end
+
+# ╔═╡ 8b896d3d-7796-468d-ae6e-553ed4eb84e4
+function neighbors_matrix5(p::Vector{R}) where {R}
+	p̄ = one(R) .- p
+	N = [
+		zero(R)         one(R)     p̄[2]     p̄[2]*p̄[3]  p̄[2]*p̄[3]*p̄[4]
+		one(R)          zero(R)    one(R)   p̄[3]       p̄[3]*p̄[4]
+		p̄[2]            one(R)     zero(R)  one(R)     p̄[4]
+		p̄[3]*p̄[2]       p̄[3]       one(R)   zero(R)    one(R)
+		p̄[4]*p̄[3]*p̄[2]  p̄[4]*p̄[3]  p̄[4]     one(R)     zero(R)
+	]
+	return N
+end
+
+# ╔═╡ af29b6cc-ed69-466d-98eb-62fa41806cae
+function one_hot(n, i)
+	x = zeros(n)
+	x[i] = 1.0
+	return x
+end
+
+# ╔═╡ 28d69223-f7a3-4b9f-8eb9-8dc1239ba04a
+# Your code here
+
+# ╔═╡ def18cb7-29db-4de6-b896-69923c038f74
+if (@isdefined meeting_matrix) && (@isdefined multiply_meeting_matrix)
+	let
+		p = collect(1:5) ./ 5
+		x = rand(5)
+		meeting_matrix(p) * x, multiply_meeting_matrix(p, x)
+	end
+end
+
+# ╔═╡ 51bdc11d-8bcb-4a31-b455-af176e4adf1a
+let
+	A = rand(4, 4)
+	b = rand(4)
+	x = A \ b
+	A * x - b
+end
+
+# ╔═╡ 047d66ac-64fa-47e9-a566-89d840b8ea07
+let
+	A = rand(4, 4)
+	b = rand(4)
+	x1 = @btime $A \ $b
+	x2 = @btime inv($A) * $b
+	@assert A * x1 ≈ b
+	@assert A * x2 ≈ b
+	x1, x2
+end
+
+# ╔═╡ a94d571f-a983-474e-b4e2-f9044dd87be0
+let
+	A = rand(4, 8)
+	b = rand(4)
+	x1 = A \ b
+	x2 = pinv(A) * b
+	@assert A * x1 ≈ b
+	@assert A * x2 ≈ b
+	x1, x2
+end
+
+# ╔═╡ 2af6a3a0-6ccc-40d6-9af1-9046551a85d1
+let
+	A = rand(8, 4)
+	b = rand(8)
+	x1 = A \ b
+	x2 = pinv(A) * b
+	@assert !(A * x1 ≈ b)
+	@assert !(A * x2 ≈ b)
+	x1, x2
+end
+
+# ╔═╡ a876ca5b-1b10-420e-b070-bfc5126e9065
+let
+	A = rand(4, 4)
+	b = rand(4)
+	@which A \ b
+end
+
+# ╔═╡ bb3e3399-a7bc-49a2-8e10-88e6e7f82751
+let
+	A = Symmetric(rand(4, 4))
+	b = rand(4)
+	@which A \ b
+end
+
+# ╔═╡ 87300b00-cb9b-4584-8d17-fe9e8a9359de
+let
+	A = Diagonal(rand(4, 4))
+	b = rand(4)
+	@which A \ b
+end
+
+# ╔═╡ 8151780e-6e83-473f-ae88-fb991ce35ec7
+let
+	A = rand(4, 4)  # matrix
+	A_fun = (x -> A * x)  # function
+	b = rand(4)
+	x1 = A \ b
+	x2, _ = linsolve(A_fun, b)
+	x1, x2
+end
+
+# ╔═╡ 480252e0-0815-45b0-b1c4-51bdbd02561c
+struct LazyMatrixSum{
+	R,M1<:AbstractMatrix{R},M2<:AbstractMatrix{R}
+} <: AbstractMatrix{R}
+	m1::M1
+	m2::M2
+	function LazyMatrixSum(m1, m2)
+		@assert eltype(m1) == eltype(m2)
+		@assert size(m1) == size(m2)
+		return new{eltype(m1),typeof(m1),typeof(m2)}(m1, m2)
+	end
+end
+
+# ╔═╡ a201234a-65e0-42d9-8b4a-619243542cb7
+Base.size(ls::LazyMatrixSum) = size(ls.m1)
+
+# ╔═╡ e4c988de-2d03-43c8-ae5d-c708e76dc463
+Base.getindex(ls::LazyMatrixSum, i, j) = ls.m1[i, j] + ls.m2[i, j]
+
+# ╔═╡ d4f96362-7945-4a18-99dd-52a94f6cc65b
 md"""
 Homework 5 of the MIT Course [_Julia: solving real-world problems with computation_](https://github.com/mitmath/JuliaComputation)
 
-Release date: Thursday, Oct 19, 2023 (version 1.3)
+Release date: Thursday, Oct 27, 2022 (version 2)
 
-**Due date: Thursday, Oct 26, 2023 at 11:59pm EST**
+**Due date: Thursday, Nov 3, 2022 at 11:59pm EST**
 
 Submission by: Jazzy Doe (jazz@mit.edu)
 """
 
-# ╔═╡ a353c90a-32c5-4cf7-aa3a-0a9c0e7e4f47
-TableOfContents()
-
-# ╔═╡ d79b1c88-73f6-462f-8bab-07c311c9cac1
+# ╔═╡ c0f57380-f746-4d22-8403-8d9d4606012f
 md"""
-# HW5: High-performance Computing and the $n$-body problem
+# 1. Social gatherings on a street
 """
 
-# ╔═╡ 6f256181-b70d-41f5-a0cf-8fbf0ff94ed4
+# ╔═╡ fedf534f-24b2-43ea-96dd-86f678987ec9
 md"""
-In this homework, we will simulate the motion of $n$ interacting bodies.
-This is an excellent excuse to talk about parallelism and GPU computing.
-Thanks to James Schloss for his help!
+## 1.1 Problem description
 """
 
-# ╔═╡ 8072b6c7-548c-4d8d-aac1-cf6ce268970b
-md"# Checking for a GPU"
-
-# ╔═╡ 2ae0f053-a759-4f09-b265-143003a7da1e
+# ╔═╡ 36976d68-1684-4123-a663-8b0407ee31ee
 md"""
-Let's start by checking if your computer has a GPU and if CUDA knows that.
-Either way, the GPU sections of this homework are completely optional, but encouraged if you happen to have a GPU and are interested in seeing how to use them.
+Welcome to Julia Street, the beating heart of Julia Town!
+In this charming neighborhood, the residents are numbered from $1$ to $n$, as they should be.
+They like to visit each other for a cup of tea, but due to their random moods, things rarely go as planned...
+
+Every day, each resident $i \in [n]$ chooses their mood following a coin flip: good with probability $p_i$, and bad with probability $1-p_i$.
+For residents $i$ and $j$ to meet, the following conditions must be satisfied (we assume $i < j$):
+- both $i$ and $j$ must be in a good mood
+- all the other $k \in \{i+1,...,j-1\}$ must be in a bad mood
+Indeed, if even one resident $k$ between them is also in a good mood, $i$ will stop at $k$'s house on the way to $j$'s, and so the meeting between $i$ and $j$ will never happen.
+
 """
 
-# ╔═╡ ec43be3f-2ae1-41fa-b630-4de63271fbb3
-CUDA.has_cuda_gpu()
+# ╔═╡ 33845853-3597-4998-b04b-c6886d64adea
+md"""
+In other words, the probability that $i$ and $j$ meet on a given day is
+```math
+	M_{ij}(p) = p_i \left(\prod_{k=\min(i,j)+1}^{\max(i,j)-1} (1-p_k)\right) p_j
+```
+We also define $M_{ii}(p) = 0$.
+As an example, for $n = 5$, we have
+```math
+M(p) = \begin{pmatrix}
+0 & p_1 p_2 & p_1 \bar{p}_2 p_3 & p_1 \bar{p}_2 \bar{p}_3 p_4 & p_1 \bar{p}_2 \bar{p}_3 \bar{p}_4 p_5 \\
+p_2 p_1 & 0 & p_2 p_3 & p_2 \bar{p}_3 p_4 & p_2 \bar{p}_3 \bar{p}_4 p_5 \\
+p_3 \bar{p}_2 p_1 & p_3 p_2 & 0 & p_3 p_4 & p_3 \bar{p}_4 p_5 \\
+p_4 \bar{p}_3 \bar{p}_2 p_1 & p_4 \bar{p}_3 p_2 & p_4 p_3 & 0 & p_4 p_5 \\
+p_5 \bar{p}_4 \bar{p}_3 \bar{p}_2 p_1 & p_5 \bar{p}_4 \bar{p}_3 p_2 & p_5 \bar{p}_4 p_3 & p_5 p_4 & 0
+\end{pmatrix}
+```
+where we wrote $\bar{p}_i = 1-p_i$ for convenience.
+"""
 
-# ╔═╡ 2e70ac93-80ac-44bb-a7e0-06a89a2a0188
-try
-	CUDA.versioninfo()
-	@info "CUDA.jl is working correctly on this machine"
-catch e
-	@info "CUDA.jl is not working correctly on this machine"
+# ╔═╡ 36ba0cd6-61e7-46ea-92af-bec8758b2f0a
+md"""
+## 1.2 Matrix representations
+"""
+
+# ╔═╡ df267206-71ee-47b1-b732-5adbad023cea
+md"""
+The goal of this section is to present several ways to manipulate a matrix.
+"""
+
+# ╔═╡ e1d3d726-0f2b-437f-831c-521e9c105176
+md"""
+!!! danger "Task 1.2.1"
+	Define a function `meeting_matrix(p)` which takes a vector $p$ of mood probabilities and returns the matrix $M(p)$ of meeting probabilities.
+	The output matrix should have the same element type as the input vector.
+"""
+
+# ╔═╡ 363b3a59-4e7c-4532-a52d-aa1ece8a2237
+hint(md"""
+Use the `prod` function to compute a product.
+You will probably get a `MethodError`, which can be solved by supplying an `init` keyword argument (what is the neutral element for multiplication?)
+""")
+
+# ╔═╡ 625b8ace-cbbc-4dfe-aa71-0d60ad9786b6
+if @isdefined meeting_matrix
+	let
+		p = collect(1:5) ./ 5
+		M_true = meeting_matrix5(p)
+		try
+			M = meeting_matrix(p)
+			if M ≈ M_true
+				correct()
+			else
+				almost(md"`meeting_matrix` returns an incorrect result")
+			end
+		catch e
+			almost(md"`meeting_matrix` throws an error")
+		end
+	end
+else
+	almost(md"You need to define `meeting_matrix`")
 end
 
-# ╔═╡ 0c98d84e-00f4-43ce-847f-f1a3ff9b4e2a
-md"# 1. Benchmarking"
-
-# ╔═╡ a89ec761-8c1d-4984-944f-2e3b1cc7dbe9
+# ╔═╡ dc47f817-b451-4055-bb8e-3bd6687f0e3c
 md"""
-To start with, let us note that Julia already has a useful built-in macro called `@time`.
-When you put it before a function call, it measures the CPU time, memory use and number of allocations required.
+!!! danger "Task 1.2.2"
+	Does $M(p)$ have any interesting structural property?
+	How can we express it in Julia code?
 """
 
-# ╔═╡ ee3e173f-a8d7-490d-966b-213c9678c99c
-@time rand(1000, 1000);
+# ╔═╡ c6cf31d9-dfe1-4b9a-acb3-0ad199b7f03a
+hint(md"Take a look at the documentation on [special matrices](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#Special-matrices)")
 
-# ╔═╡ db911c10-4f16-4a9b-ae75-77ed4b0fbcc7
+# ╔═╡ 59381db6-4f7c-4255-9e4a-6b116d6542fa
 md"""
-But `@time` has a few drawbacks:
-- it only runs the function one time, which means estimates are noisy
-- it includes compilation time if the function has never been run before
-- it can be biased by [global variables](https://docs.julialang.org/en/v1/manual/performance-tips/#Avoid-untyped-global-variables)
-
-Here are some examples.
+> Your answer here
 """
 
-# ╔═╡ e1af9a3e-792d-4557-b889-e38c95a8860a
-@time cos.(rand(1000, 1000));
-
-# ╔═╡ 41589942-1d0d-42cc-8523-24e582b3d3f6
+# ╔═╡ 641c4d16-445e-41e6-b978-b7acb2a31981
 md"""
-The first time you run the previous cell, most of the time will actually be spent compiling the function.
-If you run it a second time, the benchmarking result will be completely different.
+This special format is interesting because
+- it enforces equality between the upper and lower triangular parts of a matrix
+- it can influence the efficiency of numerical linear algebra (more on this below)
 """
 
-# ╔═╡ 71da98e7-b7a3-4b82-a551-5953ce001f73
+# ╔═╡ 1fecaaac-7c37-4032-af5e-f784b9977765
+md"""
+Unfortunately, even a symmetric matrix still needs to store $\frac{n(n+1)}{2}$ coefficients.
+For our specific use case, this is a bit overkill, because $M(p)$ is entirely defined by $n$ coefficients.
+This means we can save memory thanks to a custom struct which "behaves like a matrix".
+The way to do that is by extending the [`AbstractArray` interface](https://docs.julialang.org/en/v1/manual/interfaces/#man-interface-array).
+"""
+
+# ╔═╡ 36fc7d25-77b9-4088-b46c-6e718528ffa0
+md"""
+!!! danger "Task 1.2.3"
+	Define a parametric struct `MeetingMatrix{R}` whose only field `p` is a vector with elements of type `R`.
+	Make this struct a subtype of `AbstractMatrix{R}`.
+"""
+
+# ╔═╡ 5e68a931-0306-4581-b256-a193658439a5
+md"""
+!!! danger "Task 1.2.4"
+	Implement the methods `Base.size(M)` and `Base.getindex(M, i, j)` for the type `MeetingMatrix`.
+"""
+
+# ╔═╡ eb5404f6-8f4d-449e-959f-fc81debbef7f
+if @isdefined MeetingMatrix
+	let
+		p = collect(1:5) ./ 5
+		M_true = meeting_matrix5(p)
+		try
+			M = MeetingMatrix(p)
+			if Matrix(M) ≈ M_true
+				correct()
+			else
+				almost(md"`MeetingMatrix` returns an incorrect result")
+			end
+		catch e
+			almost(md"`MeetingMatrix` throws an error")
+		end
+	end
+else
+	almost(md"You need to define `MeetingMatrix`")
+end
+
+# ╔═╡ ddf2584f-63e0-4fe7-a895-a850ed97a0b8
+md"""
+Note that the Pluto (and REPL) display will compute a few coefficients of the `MeetingMatrix`, but these coefficients are not actually stored within the struct.
+"""
+
+# ╔═╡ 55d51ebf-8172-414f-b868-b7b24cbb787d
+md"""
+!!! danger "Task 1.2.5"
+	Compare the memory footprint of `M1 = meeting_matrix(p)` and `M2 = MeetingMatrix(p)`.
+	What did we sacrifice for this gain?
+"""
+
+# ╔═╡ 3403402f-7a4c-4d00-873e-17a44ca8f7aa
+hint(md"Use the function `Base.summarysize`")
+
+# ╔═╡ aef77331-eaea-4b34-a944-537f1c0b53a0
+md"""
+> Your answer here
+"""
+
+# ╔═╡ 7d39ac63-708b-4374-902f-cedf3d9df384
+md"""
+Now that our struct "behaves like a matrix", the whole universe of linear algebra becomes accessible without further effort!
+"""
+
+# ╔═╡ f6b41ff9-d362-469d-a714-2b85acba2b03
+md"""
+In some situations, it might be more efficient to consider matrices as linear operators, i.e. functions that apply to vectors.
+We have seen an example in HW2 with vector-Jacobian products, and now we give another one.
+"""
+
+# ╔═╡ 9177bb33-0240-41a7-8732-85b0471d5548
+md"""
+!!! danger "Task 1.2.6"
+	Look at the formula for $M(p)$ with $n = 5$.
+	What do you notice about the first term in the products on a given row? And the last term in the products on a given column?
+"""
+
+# ╔═╡ 5e8c1a90-7461-4116-a6aa-fff4d8f2def6
+md"""
+> Your answer here
+"""
+
+# ╔═╡ f2a9da31-8c31-4a72-9f2b-9541ee3931fc
+md"""
+!!! danger "Task 1.2.7"
+	Give another expression for $M(p)$ of the form $D(p) N(p) D(p)$, where
+	- the term $D(p)$ is a diagonal matrix whose coefficients only involve $p$
+	- the term $N(p)$ is the neighbors matrix whose coefficients only involve $\bar{p}$
+"""
+
+# ╔═╡ 3f6001f1-3bf3-4a89-92ca-07a8ee0bab75
+md"""
+> Your answer here
+"""
+
+# ╔═╡ 2befedaf-5fd2-471c-8e8b-574f741277ef
+md"""
+!!! danger "Task 1.2.8"
+	Define a function `multiply_row_neighbors_matrix(p, i, x)` which returns the dot product between the $i$-th row of $N(p)$ and a vector $x$.
+	Your function must be efficient: avoid recomputing products of the $\bar{p}_j$ whenever possible.
+"""
+
+# ╔═╡ 80030ad9-956d-464a-87d3-e5b6083e8113
+hint(md"Use two loops: one for indices $j \in \{i+1, ..., n\}$ and one for indices $j \in \{i-1, ..., 1\}$. In each one, accumulate the product of the $\bar{p}_j$ in a temporary variable.")
+
+# ╔═╡ 7a2d0d30-4dc1-4701-bb7f-04ef9e46974a
+if @isdefined multiply_row_neighbors_matrix
+	let
+		p = collect(1:5) ./ 5
+		N_true = neighbors_matrix5(p)
+		try
+			N = hcat(
+				(multiply_neighbors_matrix(p, one_hot(5, i)) for i in 1:5)...
+			)
+			if N ≈ N_true
+				correct()
+			else
+				almost(md"`multiply_row_neighbors_matrix` returns an incorrect result")
+			end
+		catch e
+			almost(md"`multiply_row_neighbors_matrix` throws an error")
+		end
+	end
+else
+	almost(md"You need to define `multiply_row_neighbors_matrix`")
+end
+
+# ╔═╡ 4ea6b4f9-3f7c-4d23-b911-f7f2a4e23135
+md"""
+!!! danger "Task 1.2.9"
+	Define a function `multiply_meeting_matrix(p, x)` which computes the product $M(p)x$.
+"""
+
+# ╔═╡ ffdca609-1047-46fa-a2d2-8ca0db26371f
+hint(md"Use the function `multiply_neighbors_matrix` as a subroutine")
+
+# ╔═╡ d44754fe-6c16-4561-9b4e-c64cad147b8d
+if (
+	(@isdefined multiply_row_neighbors_matrix) &&
+	(@isdefined multiply_meeting_matrix)
+)
+	let
+		p = collect(1:5) ./ 5
+		M_true = meeting_matrix5(p)
+		try
+			M = hcat(
+				(multiply_meeting_matrix(p, one_hot(5, i)) for i in 1:5)...
+			)
+			if M ≈ M_true
+				correct()
+			else
+				almost(md"`multiply_row_neighbors_matrix` or `multiply_meeting_matrix` returns an incorrect result")
+			end
+		catch e
+			almost(md"`multiply_row_neighbors_matrix` or `multiply_meeting_matrix` throws an error")
+		end
+	end
+else
+	almost(md"You need to define `multiply_row_neighbors_matrix` and `multiply_meeting_matrix`")
+end
+
+# ╔═╡ 4988e048-4846-498a-86b5-da54a61b247c
+md"""
+## 1.3 Linear systems of equations
+"""
+
+# ╔═╡ 3407e79e-96bd-4425-8655-a6bbff21173b
+md"""
+Linear systems are the backbone of many numerical routines, from differential equations to implicit differentiation.
+The Julia ecosystem offers a plethora of possibilities for solving them.
+"""
+
+# ╔═╡ 26e252b6-956d-428f-9228-f705095ac946
+md"""
+The [binary `\` operator](https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#Base.:\\-Tuple{AbstractMatrix,%20AbstractVecOrMat}) is a very versatile way to solve a linear system $Ax = b$.
+Let us see it in action.
+"""
+
+# ╔═╡ 20979a07-b6c9-4b7b-987f-266e900c8543
+md"""
+When $A$ is square and nonsingular, it returns the same solution one would get with the matrix inverse `inv(A)`, but much faster.
+"""
+
+# ╔═╡ f0bec76f-d70b-41b0-859c-645a40b3733c
+md"""
+When $A$ is rectangular and fat (many variables, few equations), then the solution may not be unique.
+In this case, `\` returns the solution $x$ with smallest Euclidean norm.
+This solution can also be obtained with the [Moore-Penrose pseudoinverse](https://en.wikipedia.org/wiki/Moore–Penrose_inverse) `pinv(A)`.
+"""
+
+# ╔═╡ 2b4b2084-1c38-490d-b3f8-215963b87d82
+md"""
+Finally, when $A$ is rectangular and thin (many equations, few variables), then the solution may not exist.
+In this case, `\` returns a vector minimizing the squared Euclidean error between $Ax$ and $b$, breaking ties by the Euclidean norm of $x$.
+Again, this solution can be obtained with the Moore-Penrose pseudoinverse `pinv(A)`.
+"""
+
+# ╔═╡ f942b9c0-b40a-4d9f-aedb-73b1848d9709
+md"""
+!!! danger "Task 1.3.1"
+	Explain the behavior of the following code cells using the concept of multiple dispatch.
+"""
+
+# ╔═╡ 2063fdfc-120b-4603-983f-f1abb2790ad2
+hint(md"The macro `@which` shows you which method was called by a given function")
+
+# ╔═╡ d306cee2-6261-4125-8c5f-52d8e46f8a54
+md"""
+> Your answer here
+"""
+
+# ╔═╡ f3a64b98-e901-4f06-bdfc-0f2b99014049
+md"""
+In fact, `\` is compatible with any matrix satisfying the `AbstractMatrix` interface.
+This includes the `MeetingMatrix` you defined earlier!
+"""
+
+# ╔═╡ fbcba267-24ed-461c-bd3e-4a3a8182c32c
+md"""
+!!! danger "Task 1.3.2"
+	Can multiple dispatch choose a linear solve algorithm based on the size of the matrix $A$?
+"""
+
+# ╔═╡ 0a0afd07-6ab4-418e-80e0-d0cc4eccce54
+md"""
+> Your answer here
+"""
+
+# ╔═╡ 02d10c6b-a987-4f8f-ba00-45a38df9abe1
+md"""
+For high-dimensional applications, factorization-based methods no longer work, and solvers often rely on iterative methods, also called Krylov subspace methods.
+You may have encountered some of them before, like "conjugate gradient" or "GMRES".
+Their main strength is that they do not require a full matrix, only a linear operator.
+
+The most modern package in this area is [LinearSolve.jl](https://github.com/SciML/LinearSolve.jl), but here we present [KrylovKit.jl](https://github.com/Jutho/KrylovKit.jl) which we deem more accessible.
+"""
+
+# ╔═╡ 16061b47-c086-4f38-a6d8-685872504f72
+md"""
+Of course, the previous example is rather contrived.
+But remember your `multiply_meeting_matrix` function: Krylov methods are a typical scenario where it could come in handy.
+And guess what?
+It actually will come in handy... in the next section!
+"""
+
+# ╔═╡ de4508fc-7549-4ced-91cd-9f7166ebffc1
+md"""
+## 1.4 Utilities
+"""
+
+# ╔═╡ 8f0da298-9bb4-491e-8be7-e8def8ded6e5
+md"""
+You can safely skip to the beginning of section 2, there is no task to be found here.
+"""
+
+# ╔═╡ 466cb64c-0570-4951-9c1e-31afec1aef49
 let
-	x = rand(1000, 1000)
-	sum(abs2, x)  # run once to compile
-	@time sum(abs2, x)
-end; 
-
-# ╔═╡ fc307c99-4444-4e9f-8194-c60634286b4e
-md"""
-In the previous cell, there is no reason for the sum to allocate anything: this is just an artefact due to the global variable `x`.
-"""
-
-# ╔═╡ 7652a2bd-27e9-4d47-93b5-4ada74516524
-md"""
-For all of these reasons, [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) is a much better option.
-Its `@btime` macro does basically the same job as `@time`, but runs the function several times and circumvents global variables, as long as they are "interpolated" with a `$` sign.
-"""
-
-# ╔═╡ 5b752d74-be2a-4e04-9a38-b566a28bf8a4
-@btime rand(1000, 1000);
-
-# ╔═╡ 333f28a1-0ae7-4933-a25d-dfea1f08d20b
-md"""
-This benchmark is pretty comparable to the one given by `@time`.
-"""
-
-# ╔═╡ 1ceffc88-f8a4-4b14-b7cb-23ca8e7a796e
-@btime sin.(rand(1000, 1000));
-
-# ╔═╡ 5e0b101f-a9fe-4702-9c7c-bf199c3ebf10
-md"""
-This benchmark does not include compilation time, because the first run of the function is just one of many.
-"""
-
-# ╔═╡ 56badd88-f661-4a6d-95b4-1c62709ada38
-let
-	x = randn(1000, 1000); 
-	@btime sum(abs2, $x); 
+	m1 = rand(4, 4)
+	m2 = rand(4, 4)
+	ls = @btime LazyMatrixSum($m1, $m2)
+	@assert ls ≈ m1 .+ m2
 end
 
-# ╔═╡ 09156ec4-2146-4f8d-a5ac-7fed1951d9d1
+# ╔═╡ bfad99bc-3805-4037-8f3b-600e978c3976
+fahrenheit(T) = (T - 273.15) * (9/5) + 32
+
+# ╔═╡ fa0c41c6-ad85-48e8-a9e0-d88539199355
 md"""
-This benchmark shows zero allocation, which is what we actually expect.
+# 2. Layered atmospheric model
 """
 
-# ╔═╡ 4d636f82-8330-41fe-80fc-e96bb66e503a
+# ╔═╡ 4ec40d1a-66d6-4d3c-9e45-a7432082083f
 md"""
-!!! danger "Task 1.1"
-	Write a function that compares matrix addition and multiplication based on the time _per operation_.
+## 2.1 Problem description
 """
 
-# ╔═╡ a35a7ec2-9ebf-4cdc-9ae4-b7954302fe20
-hint(md"
-Unlike `@btime`, which prints a bunch of information but returns the result of the function, `@belapsed` actually returns the elapsed CPU time.
-Don't forget to interpolate the arguments.
+# ╔═╡ b7ea1640-01e3-4f9b-9232-51764024dcb0
+md"""
+In our study of the role of the atmosphere on Earth’s energy budget, we only considered the lower layer of the atmosphere, the troposphere.
+It contains most of the atmospheric mass and dominates the absorption/emission of thermal/longwave radiation.
 
-Remember that for a given size $n$, addition requires $n^2$ operations while multiplication requires $2n^3$ operations.
-You should divide the output of `@belapsed` by these factors.
-")
+In this problem, we will also consider the role played by the stratosphere, the atmospheric layer above the troposphere.
+Observations suggest that the stratosphere has been cooling over the last century, a trend opposite to what has been well documented in the troposphere.
+The stratosphere is rich in ozone, a gas that absorbs shortwave radiation.
+Thus, unlike the troposphere, whose main source of radiative forcing is longwave radiation from the surface, the stratosphere is also heated by absorbed shortwave radiation.
+This leads to a different stratospheric response to an increase in $\text{CO}_2$ concentrations.
 
-# ╔═╡ 18e3412d-2195-4db7-b4dc-f8eeda903d49
-function compare_add_mul(n)
-	# write your code here
-	time_add = 1.0 # change this line
-	time_mul = 1.0 # change this line
-	return time_add, time_mul
+To see different effects at play in the atmosphere we have to switch to a _layered_ model, in which shortwave and longwave radiations are modeled separately
+"""
+
+# ╔═╡ 6e8b5dbe-4f1a-11ed-1d6d-898b90885e3d
+md"""
+$(PlutoUI.Resource("https://raw.githubusercontent.com/mitmath/JuliaComputation/main/homeworks/images/atmosphere.png"))
+**Figure:** Schematic showing the pathways of longwave (blue) and shortwave (red) radiation in a 4-layer climate model (1 surface layer + 3 atmosphere layers).
+"""
+
+# ╔═╡ 047f32ac-c8bf-4f36-9f9c-3a4ab2998371
+md"""
+Longwave radiation is emitted by each atmospheric layer $i$ with energy $\sigma \varepsilon_i T_i^4$, where $T_i$ is the temperature of the layer.
+When passing through layer $i$, a fraction $\varepsilon_i$ of the radiation is absorbed and the remaining fraction $1-\varepsilon_i$ is transmitted.
+Each layer $i \geq 1$ emits in both directions, so the total energy emitted amounts to $2\sigma \varepsilon_i T_i^4$.
+The surface layer $i = 1$ emits only upwards and we consider it to be a perfect blackbody with $\varepsilon_1=1$.
+
+Shortwave radiation comes from the sun and hits the upper atmosphere with energy $S_0 / 4$.
+When passing through layer $i$, a fraction $\beta_i$ of the radiation is absorbed and the remaining fraction $1-\beta_i$ is transmitted.
+When hitting the surface, this remaining fraction $1-\beta_1$ is reflected upwards instead.
+"""
+
+# ╔═╡ f1faf89a-58ef-445e-b7f3-cc15391a127e
+md"""
+## 2.2 Numerical values
+"""
+
+# ╔═╡ 7de00277-3dc9-4c87-8b4b-fcbeeed8656d
+md"""
+Here are the physical parameters we will work with.
+"""
+
+# ╔═╡ 1eebce33-d71d-4a8d-be22-843e2ee283ea
+σ_val = 5.67e-8
+
+# ╔═╡ 9b8f0c49-aff6-4705-be09-134784bee7ad
+S₀_val = 1356.2
+
+# ╔═╡ 83af51e5-b8d7-4487-9664-2052a7ef21c5
+ε_val = [1.0, 0.66, 0.50, 0.31, 0.22]
+
+# ╔═╡ 149140f0-8849-4011-adf9-b50b24052e16
+β_val  = [0.7, 0.015, 0.018, 0.021, 0.043]
+
+# ╔═╡ 7a3b31ea-dee5-4d90-96e5-83fcb4f98f53
+md"""
+## 2.3 Energy balance
+"""
+
+# ╔═╡ 7ec215a8-3f60-4752-833d-85dafc71ad3d
+md"""
+Here are the energy balance equations for a 4-layer atmosphere.
+They are obtained by applying the following principle to each layer:
+```math
+0 = \text{absorbed longwave} - \text{emitted longwave} + \text{absorbed shortwave}
+```
+To save space, we write $\bar{\varepsilon}_i = 1 - \varepsilon_i$ and $\bar{\beta}_i = 1 - \beta_i$.
+We also define $\bar{B} = \prod_{k=1}^{n} \bar{\beta}_k$
+"""
+
+# ╔═╡ 017d0901-9045-4622-bc73-13a74ecf38ad
+md"""
+```math
+\begin{array}{llllllll}
+0 =
+& - \varepsilon_1 T_1^4
+& + \varepsilon_2 T_2^4 \varepsilon_1
+& + \varepsilon_3 T_3^4 \bar{\varepsilon}_2 \varepsilon_1
+& + \varepsilon_4 T_4^4 \bar{\varepsilon}_3 \bar{\varepsilon}_2 \varepsilon_1
+& + \frac{S_0}{4\sigma} \bar{\beta}_4 \bar{\beta}_3 \bar{\beta}_2 \beta_1
+& + 0
+\\
+0 =
+& + \varepsilon_1 T_1^4 \varepsilon_2
+& - 2\varepsilon_2 T_2^4
+& + \varepsilon_3 T_3^4 \varepsilon_2
+& + \varepsilon_4 T_4^4 \bar{\varepsilon}_3 \varepsilon_2
+& + \frac{S_0}{4\sigma} \bar{\beta}_4 \bar{\beta}_3 \beta_2
+& + \frac{S_0}{4\sigma} \bar{\beta}_4 \bar{\beta}_3 \bar{\beta}_2 \bar{\beta}_1 \beta_2
+\\
+0 =
+& + \varepsilon_1 T_1^4 \bar{\varepsilon}_2 \varepsilon_3
+& + \varepsilon_2 T_2^4 \varepsilon_3
+& - 2\varepsilon_3 T_3^4
+& + \varepsilon_4 T_4^4 \varepsilon_3
+& + \frac{S_0}{4\sigma} \bar{\beta}_4 \beta_3
+& + \frac{S_0}{4\sigma} \bar{\beta}_4 \bar{\beta}_3 \bar{\beta}_2 \bar{\beta}_1 \bar{\beta}_2 \beta_3
+\\
+0 =
+& + \varepsilon_1 T_1^4 \bar{\varepsilon}_2 \bar{\varepsilon}_3 \varepsilon_4
+& + \varepsilon_2 T_2^4 \bar{\varepsilon}_3 \varepsilon_4
+& + \varepsilon_3 T_3^4 \varepsilon_4
+& - 2\varepsilon_4 T_4^4
+& + \frac{S_0}{4\sigma} \beta_4
+& + \frac{S_0}{4\sigma} \bar{\beta}_4 \bar{\beta}_3 \bar{\beta}_2 \bar{\beta}_1 \bar{\beta}_2 \bar{\beta}_3 \beta_4
+\end{array}
+```
+"""
+
+# ╔═╡ 6dce25d0-907c-45ec-a73d-6ed0948dd112
+md"""
+We can rephrase this as a nonlinear system of equations $A T^4 = b$, where
+"""
+
+# ╔═╡ a4d6fe4b-cbac-4165-9467-606035bbf70f
+md"""
+```math
+A = \begin{pmatrix}
+& - \varepsilon_1
+& \varepsilon_2 \varepsilon_1
+& \varepsilon_3 \bar{\varepsilon}_2 \varepsilon_1
+& \varepsilon_4 \bar{\varepsilon}_3 \bar{\varepsilon}_2 \varepsilon_1
+\\
+& \varepsilon_1 \varepsilon_2
+& - 2\varepsilon_2
+& \varepsilon_3 \varepsilon_2
+& \varepsilon_4 \bar{\varepsilon}_3 \varepsilon_2
+\\
+& \varepsilon_1 \bar{\varepsilon}_2 \varepsilon_3
+& \varepsilon_2 \varepsilon_3
+& - 2\varepsilon_3
+& \varepsilon_4 \varepsilon_3
+\\
+& \varepsilon_1 \bar{\varepsilon}_2 \bar{\varepsilon}_3 \varepsilon_4
+& \varepsilon_2 \bar{\varepsilon}_3 \varepsilon_4
+& \varepsilon_3 \varepsilon_4
+& -2\varepsilon_4
+\end{pmatrix}
+```
+"""
+
+# ╔═╡ 8eb52f83-ff89-4dc0-a90f-99d1bfb59b20
+md"""
+```math
+b = \frac{-S_0}{4\sigma} \begin{pmatrix}
+ \bar{\beta}_4 \bar{\beta}_3 \bar{\beta}_2 \beta_1
+& + & 0
+\\
+\bar{\beta}_4 \bar{\beta}_3 \beta_2
+& + & \bar{B} \beta_2
+\\
+\bar{\beta}_4 \beta_3
+& + & \bar{B} \bar{\beta}_2 \beta_3
+\\
+\beta_4
+& + & \bar{B} \bar{\beta}_2 \bar{\beta}_3 \beta_4
+\end{pmatrix}
+\qquad \text{and} \qquad
+T = \begin{pmatrix}
+T_1 \\
+T_2 \\
+T_3 \\
+T_4
+\end{pmatrix}
+```
+"""
+
+# ╔═╡ a0a6bacc-26d9-4c65-b218-9616db10f856
+md"""
+Solving the nonlinear system $AT^4 = b$ will give us the equilibrium temperatures $T^*$.
+Of course, in practice, we solve the linear system $Ax = b$, and then retrieve $T^* = (x^*)^{1/4}$.
+"""
+
+# ╔═╡ c53630b5-0b7e-4fcb-ac96-affb16e1b9f0
+md"""
+From now on, we call $A$ the "longwave radiation matrix" and $b$ the "shortwave radiation vector".
+"""
+
+# ╔═╡ 5098783f-75fd-4373-9ad9-dd39b5a86aa8
+md"""
+!!! danger "Task 2.3.1"
+	Give a formula for $A$ based on the meeting matrix $M$ defined earlier.
+"""
+
+# ╔═╡ 0205887c-69ed-4e1e-84df-0d1b4b935ddc
+md"""
+> Your answer here
+"""
+
+# ╔═╡ 3caa1420-97f9-40c7-bc0e-0243c845ee59
+md"""
+Because I'm a nice person, here is an implementation of the shortwave radiation vector.
+You're welcome.
+"""
+
+# ╔═╡ e49db03e-ca45-4c7f-a93c-bc679c1fd01a
+function shortwave_vector(β::Vector{R}, S₀, σ) where {R}
+	n = length(β)
+	β̄ = one(R) .- β
+	B̄ = prod(β̄)
+	b = Vector{R}(undef, n)
+	b[1] = @views prod(β̄[2:n]; init=β[1])
+	for i in 2:n
+		b[i] = @views prod(β̄[(i+1):n]; init=β[i]) + B̄ * prod(β̄[2:(i-1)]; init=β[i])
+	end
+	return (-S₀ / (4σ)) .* b
 end
 
-# ╔═╡ 44bf3996-78e5-4b20-830e-5ae1a87aacfc
-answer_11 = compare_add_mul(10)
+# ╔═╡ a7096c5e-d409-490c-8caf-d064427a5265
+shortwave_vector(β_val, S₀_val, σ_val)
 
-# ╔═╡ b7a09982-c27b-44ea-a3b6-447d0b5a2f8c
-compare_add_mul(100)
-
-# ╔═╡ 359d45f7-ca56-4249-a973-eb200249dc25
+# ╔═╡ 563bc60a-019f-42be-a311-84547a851b81
 md"""
-!!! danger "Task 1.2"
-	Now, we'll use your function to plot the normalized time per operation for matrix addition and multiplication, using sizes $n \in \{3, 10, 30, 100, 300\}$.
-	Comment on what you observe and explain the difference you see between matrix addition and multiplication.
+## 2.4 Matrix representations
 """
 
-# ╔═╡ a9751721-6f63-44e3-ace5-9f01dcff0350
+# ╔═╡ 7a0dc9b7-d4cc-415c-83a6-7d50f17d89f6
 md"""
-The loop over $n$ may take a little time, don't be scared.
-We've put the `@progress` macro from [`ProgressLogging`](https://github.com/JuliaLogging/ProgressLogging.jl) in front of the `for` keyword to track its progress.
+We now put your knowledge of matrix representations to good use on the case of the longwave radiation matrix.
 """
 
-# ╔═╡ 07e18600-b466-44fc-9835-ff2d4b0fd80f
-begin
-	n_values = [3, 10, 30, 100, 300]
-	times_add = Float64[]
-	times_mul = Float64[]
-	@progress for n in n_values
-		ta, tm = compare_add_mul(n)
-		push!(times_add, ta)
-		push!(times_mul, tm)
+# ╔═╡ b5cdbbb4-b186-4124-be6a-be18bbc754ff
+md"""
+!!! danger "Task 2.4.1"
+	Define a function `longwave_matrix(ε)` which computes $A$ and stores it as a symmetric matrix.
+"""
+
+# ╔═╡ 8f710f8a-afe2-454a-9f2c-15cfffb1c50e
+hint(md"Use `meeting_matrix`")
+
+# ╔═╡ 27c38ade-61d3-409f-ad7a-16a2361397ce
+# Your code here
+
+# ╔═╡ d0a4f988-271c-41e0-a0c7-fd013eb8aabe
+if @isdefined longwave_matrix
+	longwave_matrix(ε_val)
+end
+
+# ╔═╡ d2e80eee-db09-4711-b542-205b38248b57
+function longwave_matrix5()
+	return [
+		-1.0        0.66       0.17     0.0527   0.025806
+		0.66      -1.32       0.33     0.1023   0.050094
+		0.17       0.33      -1.0      0.155    0.0759
+		0.0527     0.1023     0.155   -0.62     0.0682
+		0.025806   0.050094   0.0759   0.0682  -0.44
+	]
+end
+
+# ╔═╡ f47a9a12-65ef-44f4-bc77-1b852f61986e
+if @isdefined longwave_matrix
+	let
+		L_true = longwave_matrix5()
+		try
+			L = longwave_matrix(ε_val)
+			if isapprox(L, L_true; atol=1e-2)
+				correct()
+			else
+				almost(md"`longwave_matrix` returns an incorrect result")
+			end
+		catch e
+			almost(md"`longwave_matrix` throws an error")
+		end
+	end
+else
+	almost(md"You need to define `longwave_matrix`")
+end
+
+# ╔═╡ 6e0c6e9f-ef00-44bb-956b-923af174000c
+md"""
+!!! danger "Task 2.4.2"
+	Define a function `LongwaveMatrix(ε)` (yes, it looks like a type constructor) which stores $A$ in a memory-efficient way.
+"""
+
+# ╔═╡ 3ab919ee-6d9a-47e1-93fe-d1ce25c63236
+hint(md"Use `MeetingMatrix` and `LazyMatrixSum`")
+
+# ╔═╡ 85de703d-d9c9-40bc-a414-e8c3920800d7
+# Your code here
+
+# ╔═╡ 499623fe-6a87-4b41-9f31-355c486c7ce4
+if @isdefined LongwaveMatrix
+	LongwaveMatrix(ε_val)
+end
+
+# ╔═╡ 447a7da7-c087-43fe-8abf-5b9079e711d8
+if @isdefined LongwaveMatrix
+	let
+		L_true = longwave_matrix5()
+		try
+			L = Matrix(LongwaveMatrix(ε_val))
+			if isapprox(L, L_true; atol=1e-2)
+				correct()
+			else
+				almost(md"`LongwaveMatrix` returns an incorrect result")
+			end
+		catch e
+			almost(md"`LongwaveMatrix` throws an error")
+		end
+	end
+else
+	almost(md"You need to define `LongwaveMatrix`")
+end
+
+# ╔═╡ f3de07e7-9421-4eb5-b52b-8c450ece3511
+md"""
+!!! danger "Task 2.4.3"
+	Define a function `multiply_longwave_matrix(ε, x)` which takes a vector $x$ and returns $Ax$.
+"""
+
+# ╔═╡ 3c98b50b-decb-4e0a-88a4-a08166e450cc
+hint(md"Use `multiply_meeting_matrix`")
+
+# ╔═╡ 388af3f8-527d-4f1a-ad21-2fb1295bc265
+# Your code here
+
+# ╔═╡ 5ce016da-1336-49ae-8735-7e73f4ef9031
+if (@isdefined longwave_matrix) && (@isdefined multiply_longwave_matrix)
+	let
+		x = rand(length(ε_val))
+		longwave_matrix(ε_val) * x, multiply_longwave_matrix(ε_val, x)
 	end
 end
 
-# ╔═╡ 1d497d40-7e84-45e4-a914-5e443d51ff45
-begin
-	plot(
-		xlabel="matrix size", ylabel="normalized operation cost (s)",
-		xscale=:log10, yscale=:log10,
-	)
-	scatter!(n_values, times_add, label="matrix addition")
-	scatter!(n_values, times_mul, label="matrix multiplication")
-end
-
-# ╔═╡ 9c4f44ef-fb59-4a21-950e-68eb456952e7
-answer_12 = md"""
-Your comment here
-"""
-
-# ╔═╡ 1e71d8ef-389d-46fe-8c34-976ac3b64b5e
-md"""
-# 2. Writing good serial code
-"""
-
-# ╔═╡ 333c4431-248c-44f6-a2f3-77d881bf4c7e
-md"""
-Before parallelizing our code, it's important to ensure the serial version is efficient.
-Often, this is enough to get the speedup we were looking for from parallelism.
-Even if it isn't, it's a necessary step to getting good parallel code (and it's easier to do now than after we've parallelized the code).
-"""
-
-# ╔═╡ db22c241-d99a-44e4-b5a2-c0283dc5d61a
-md"""
-## 2.1 Memory managment
-"""
-
-# ╔═╡ 438c1219-2171-466d-a425-f20fc775d856
-md"""
-Since Julia is a high-level language, you don't need to care about memory to write correct code.
-New objects are allocated transparently, and once you no longer need them, the Garbage Collector (GC) automatically frees their memory slots.
-
-However, in many cases, memory management is a performance bottleneck.
-If you want to write fast code, you might need to work "in place" (mutating existing arrays), as opposed to "out of place" (creating many temporary arrays).
-This is emphasized [several](https://docs.julialang.org/en/v1/manual/performance-tips/#Measure-performance-with-[@time](@ref)-and-pay-attention-to-memory-allocation) [times](https://docs.julialang.org/en/v1/manual/performance-tips/#Pre-allocating-outputs) in the Julia performance tips.
-"""
-
-# ╔═╡ 9ee41c2b-e4f3-4da2-b772-243f77cd5587
-md"""
-A common pattern is broadcasted operations, which can look like `x .+ y` (the `.` goes in front for short operators) or `exp.(x)` (the `.` goes behind for functions).
-They allow you to work directly with array components, instead of allocating new arrays.
-This leads to performance gains, as explained [here](https://docs.julialang.org/en/v1/manual/performance-tips/#More-dots:-Fuse-vectorized-operations).
-"""
-
-# ╔═╡ 049b57c3-9dd2-45ae-8b9f-438e7c896ac4
-md"""
-!!! danger "Task 2.1"
-	Try to explain the difference in speed and memory use between the following code snippets.
-"""
-
-# ╔═╡ 52ed22c5-ef4e-4248-9615-3b250e5f83af
-let
-	x = rand(100, 100)
-	y = rand(100, 100)
-	@btime $x += 2 * $y
-end;
-
-# ╔═╡ 880659cd-1766-489b-8c9c-f5408b7cf760
-let
-	x = rand(100, 100)
-	y = rand(100, 100)
-	@btime $x .+= 2 .* $y
-end;
-
-# ╔═╡ fad5383e-83aa-4dbe-bbd7-67a9bef27cec
-hint(md"`x += y` is syntactically equivalent to `x = x + y`.")
-
-# ╔═╡ f216ae0d-eff2-4abf-b4bc-877f613dd1b1
-answer_21 = md"""
-Your answer here
-"""
-
-# ╔═╡ fa62fdab-36b4-4fc2-aee6-b4f2ee72be8d
-md"""
-Whenever possible, you may also want to use or write mutating versions of critical functions.
-By convention, such functions get a `!` suffix to warn about their side effects.
-"""
-
-# ╔═╡ aceaf48e-2be3-4fde-855f-62e1a8e4eea0
-md"""
-!!! danger "Task 2.2"
-	Write a function that compares mutating and non-mutating matrix multiplication.
-"""
-
-# ╔═╡ 6952a006-605b-463a-8d51-dbcb5c957b48
-hint(md"
-Take a look at the documentation for the three-argument function `mul!(C, A, B)`, and compare it with `A * B`.
-Don't forget to interpolate the arguments
-")
-
-# ╔═╡ 2b9a78dd-fed1-4c82-8ef9-c18273639957
-function compare_mul!_mul(n)
-	# Your code goes here
-	time_mul! = 0.0 # Change this line
-	time_mul = 0.0 # Change this line
-	return time_mul!, time_mul
-end
-
-# ╔═╡ d99166df-efa3-417c-965b-9ff9273de575
-answer_22 = compare_mul!_mul(10)
-
-# ╔═╡ 06fb0635-9ae4-4c22-b61a-da0737bf0a6d
-compare_mul!_mul(100)
-
-# ╔═╡ 5e31e98e-0688-4b9d-aa81-0f49a793c71a
-md"""
-## 2.2 Statically-sized arrays
-"""
-
-# ╔═╡ 0333d1f7-be89-4a26-931b-372f3085c618
-md"""
-You are already familiar with arrays from base Julia, which have variable size and can grow or shrink dynamically.
-But in some situations, we might need arrays whose size is fixed and known statically, i.e. hardcoded in their type.
-An interesting example is physical simulations, where we often deal with small vectors / matrices of dimensions 2 or 3.
-
-If we provide static size information to the compiler, array operations can be made faster by "unrolling" the loops.
-This is the role of the [StaticArrays.jl](https://github.com/JuliaArrays/StaticArrays.jl) package.
-It defines the types `SArray` and `MArray` for immutable and mutable arrays respectively.
-"""
-
-# ╔═╡ b7f9507f-b956-4453-ba66-4787d6b2b313
-md"""
-!!! danger "Task 2.3"
-	Benchmark the performance of `Vector` against `SVector` and `MVector` for adding two vectors of size $n$, with $n \in \{2, 20, 200\}$.
-	What do you observe?
-"""
-
-# ╔═╡ f4760fa0-a0b5-41e9-b49d-0bd9cc7e2782
-hint(md"Use `SVector(Tuple(x))` to convert `x` into a static vector")
-
-# ╔═╡ eb61a025-c36f-4c96-bf3f-029bc3a2cecf
-let
-	# Your code here
-end
-
-# ╔═╡ 27f75a0b-3b90-4982-b411-2b7907f9b7d7
-answer_23 = md"""
-Your answer here
-"""
-
-# ╔═╡ e7fbd945-bd94-4639-a9b2-ef2aa78f6600
-md"""
-In practice, this means that computations involving small `SArray`s or `MArray`s are very fast and memory-efficient, even when we forget about the usual performance tips (which is what will happen in the rest of this homework).
-"""
-
-# ╔═╡ e75d3a86-604f-4502-b72a-6220e1543b64
-md"""
-# 3. Inroduction to parallelism
-"""
-
-# ╔═╡ 60907f8e-13a2-4b31-bf6f-6a7e06eacc01
-md"""
-Julia supports several flavors of [parallel computing](https://docs.julialang.org/en/v1/manual/parallel-computing/).
-Here, we focus on multithreading and GPU computing.
-"""
-
-# ╔═╡ c2112a28-3b1a-4f1d-a9c3-474a20e6b1b1
-md"""
-## 3.1 Multithreading
-"""
-
-# ╔═╡ 6fb37947-c4dd-4807-9369-7e1d67b23b9e
-md"""
-[Multithreading](https://docs.julialang.org/en/v1/manual/multi-threading/) is part of base Julia and works out of the box on every computer.
-To use it, you need to start Julia with several threads, but Pluto already takes care of that.
-"""
-
-# ╔═╡ ab60a366-44a3-4898-8b46-25a3d0fb7a38
-Threads.nthreads()
-
-# ╔═╡ 63fb4bd2-a25c-4f4b-aa26-17cf9dbbd64c
-md"""
-If, for some reason, the above cell evaluates to 1, try running Pluto using `Pluto.run(threads=N)` for some larger `N`.
-"""
-
-# ╔═╡ 7cd14a96-7894-4ed1-b002-48644f7c65ab
-md"""
-To parallelize a `for` loop, all you have to do is add the `Threads.@threads` macro in front of it, and the loop iterations will be split among the available threads (in this case, there are $(Threads.nthreads())).
-"""
-
-# ╔═╡ a44627dc-fdb5-478b-a695-11a2eb02d7f1
-let
-	a = zeros(Int, 20)
-	Threads.@threads for i in 1:20
-		a[i] = Threads.threadid()
+# ╔═╡ c4bdbbf9-1c7a-43ee-8a21-93d6324902f6
+if @isdefined multiply_longwave_matrix
+	let
+		L_true = longwave_matrix5()
+		try
+			L = hcat(
+				(multiply_longwave_matrix(ε_val, one_hot(5, i)) for i in 1:5)...
+			)
+			if isapprox(L, L_true; atol=1e-2)
+				correct()
+			else
+				almost(md"`multiply_longwave_matrix` returns an incorrect result")
+			end
+		catch e
+			almost(md"`multiply_longwave_matrix` throws an error")
+		end
 	end
-	a
+else
+	almost(md"You need to define `multiply_longwave_matrix`")
 end
 
-# ╔═╡ 2c644f2a-6416-4a0e-8e38-2b4ef097abc3
+# ╔═╡ ae4bc271-0ca2-4d66-a8ca-cf63474aef0b
 md"""
-Since all threads share the same memory, multithreading can give incorrect results when used carelessly, as in the example below.
+## 2.5 Finding the equilibrium
 """
 
-# ╔═╡ f32302b6-ead0-4a56-b0df-1776816815e3
-let
-	s = 0
-	Threads.@threads for i in 1:1_000_000
-		s += 1
+# ╔═╡ d93ca9c1-81f9-47dc-9b5c-8a682deb672e
+md"""
+!!! danger "Task 2.5.1"
+	Compute the equilibrium temperatures for a 4-layer atmosphere with the numerical values given in section 2.2.
+	Use the three matrix representations you defined above, and check that you obtain the same results.
+"""
+
+# ╔═╡ 9d4bb825-ec3f-4c12-9db0-8067d2facb25
+hint(md"Depending on the representation, you might have to choose between `\` and `linsolve`")
+
+# ╔═╡ 7c5abef9-382a-4947-ab9f-c6e721828615
+# Your code here
+
+# ╔═╡ 243ae79c-3a94-48f2-b9b4-11e7e74cbea8
+# Your code here
+
+# ╔═╡ 0cd01e96-5cd6-4200-83e2-5dfd1fc874c2
+# Your code here
+
+# ╔═╡ 659b2aa6-c95f-4d88-ae58-17f520250791
+if (
+	(@isdefined longwave_matrix) &&
+	(@isdefined LongwaveMatrix) &&
+	(@isdefined multiply_longwave_matrix)
+)
+	let
+		b = shortwave_vector(β_val, S₀_val, σ_val)
+		F_true = [89.3755, 38.494, 1.30706, -25.7982, -32.3701]
+		try
+			A1 = A = longwave_matrix(ε_val)
+			A2 = LongwaveMatrix(ε_val)
+			A3 = x -> multiply_longwave_matrix(ε_val, x)
+			x1 = A1 \ b
+			x2 = A2 \ b
+			x3, _ = linsolve(A3, b)
+			T1 = x1 .^ (1/4)
+			T2 = x2 .^ (1/4)
+			T3 = x3 .^ (1/4)
+			F1 = fahrenheit.(T1)
+			F2 = fahrenheit.(T2)
+			F3 = fahrenheit.(T3)
+			if !isapprox(F1, F_true; atol=1e-2)
+				almost(md"The equilibrium temperatures deduced from `longwave_matrix` are incorrect")
+			elseif !isapprox(F2, F_true; atol=1e-2)
+				almost(md"The equilibrium temperatures deduced from `LongwaveMatrix` are incorrect")
+			elseif !isapprox(F3, F_true; atol=1e-2)
+				almost(md"The equilibrium temperatures deduced from `multiply_longwave_matrix` are incorrect")
+			else
+				correct()
+			end
+		catch e
+			almost(md"Either `longwave_matrix`, `LongwaveMatrix`, `multiply_longwave_matrix` or one of the linear systems throws an error.")
+		end
 	end
-	s
+else
+	almost(md"You need to define `longwave_matrix`, `LongwaveMatrix` and `multiply_longwave_matrix`")
 end
 
-# ╔═╡ 41fee41a-8b78-4337-aa37-b638a24448fb
+# ╔═╡ 685fa229-5cd1-432b-8dc6-fe5beb47fa67
 md"""
-The reason why `s != 1_000_000` is because threads step on each other's toes, a phenomenon also known as race conditions.
-Check out the (short) explanation [here](https://en.wikipedia.org/wiki/Race_condition#Example).
-
-To prevent such behavior, a simple method is to make sure that each thread writes to a separate part of memory, which is not accessible to the other threads.
-On the other hand, reading from the same memory is usually okay.
+## 2.6 Anthopogenic climate change?
 """
 
-# ╔═╡ e2365d69-217f-46c8-8058-fcb2449f01aa
-let
-	s_by_thread = zeros(Int, Threads.nthreads())
-	Threads.@threads for i in 1:1_000_000
-		s_by_thread[Threads.threadid()] += 1
+# ╔═╡ 99c61fe1-6ac3-4e66-95a7-0750426f6eac
+md"""
+In our simple model, the surface of the earth can heat up because of 2 different causes:
+- an increase in solar flux $S_0$ (natural fluctuations of the sun's activity)
+- an increase in $\varepsilon$ (anthropogenic modifications of the atmosphere)
+"""
+
+# ╔═╡ 371bb174-3757-4809-8ec8-73ca27c5b3ba
+md"""
+`ΔS₀ = ` $(@bind ΔS₀ Slider(0.0:1e0:2e2; default=0.0, show_value=true))
+"""
+
+# ╔═╡ b0bebbb7-83bc-456a-a125-206922b667bb
+md"""
+`Δε = ` $(@bind Δε Slider(0.0:1e-2:0.1; default=0.0, show_value=true))
+"""
+
+# ╔═╡ 623889cd-937c-44e0-9e47-17d5eb05bb68
+if (@isdefined longwave_matrix)
+	let
+		A = longwave_matrix(min.(1.0, ε_val .+ Δε))
+		b = shortwave_vector(β_val, S₀_val + ΔS₀, σ_val)
+		x = A \ b
+		T = x .^ (1/4)
+		fahrenheit.(T)
 	end
-	sum(s_by_thread)
 end
 
-# ╔═╡ 3b6ff29a-0d42-4441-ba49-f0e5adfbb583
+# ╔═╡ c6d3945c-9e16-4c4c-a07b-b7070226e936
 md"""
-The maximum speedup you can obtain from multithreading is the number of CPU cores on your machine (possibly x2 with [hyperthreading](https://en.wikipedia.org/wiki/Hyper-threading)).
-However, depending on the underlying code, the actual speedup is usually lower, due to threading overhead or costly memory access.
-
-So if you need to tune the number of threads for a given application, just increase it until you stop gaining performance.
+!!! danger "Task 2.6.1"
+	Increase the solar flux `S₀_val` and look at the effect on the equilibrium temperatures.
+	Verify that the surface layer heats up.
+	What happens to the upper layer?
 """
 
-# ╔═╡ a3eea236-a688-433a-8a22-ccffc37ce4af
+# ╔═╡ b7e239c4-00e1-4083-983c-9364f3fdf57e
+md"""
+> Your answer here
+"""
+
+# ╔═╡ 3baed377-7b8f-4d31-bc6b-84b41724e76c
+md"""
+!!! danger "Task 2.6.2"
+	Increase all the coefficients `ε_val` (except that of the surface) and look at the effect on the equilibrium temperatures.
+	Verify that the surface layer heats up.
+	What happens to the upper layer?
+"""
+
+# ╔═╡ 06a7b2ed-1693-4a68-979d-2ff9eeda8d94
+md"""
+> Your answer here
+"""
+
+# ╔═╡ 86daab2d-695c-4f62-9e8c-8dd13939e008
+md"""
+!!! danger "Task 2.6.3"
+	Observations clearly show that the upper atmosphere is cooling down.
+	Which of our two candidate causes for global heating is confirmed by the data?
+"""
+
+# ╔═╡ 330aceeb-147a-423f-81ff-462c0cd3aeda
+md"""
+> Your answer here
+"""
+
+# ╔═╡ e902d91c-040b-4374-801b-a9f6e35abc4d
+md"""
+# 3. Hello world on a GPU
+"""
+
+# ╔═╡ ede76efa-36aa-4e4a-820c-b223276e4a91
+md"""
+We are now entering the HPC and GPU portion of the class.
+Next week's homework will require you to work on a GPU, so this week we want to make sure everyone is able to access JuliaHub in order to avoid surprises.
+
+Follow the steps outlined in [this document](https://docs.google.com/document/d/146_lPEcIq6WODdw8oPUVs6Bflp5ptjL6t0YQ6zuyG44/edit?usp=sharing) to log in to JuliaHub and connect to a GPU Pluto notebook.
+Use this notebook URL: <https://raw.githubusercontent.com/mitmath/JuliaComputation/main/homeworks/hw5-gpu.jl>
+
+Run the JuliaHub notebook and answer the following questions **here**.
+You do not need to submit the JuliaHub notebook, only this one.
+"""
+
+# ╔═╡ b4e13749-640f-49bf-baba-3e6bb877c2c3
 md"""
 !!! danger "Task 3.1"
-	Is the data structure `Dict` thread-safe?
+	What speedup did you observe when running matrix multiply on the GPU compared to the CPU? For example if the CPU calculation took 1 second and the GPU computation took 0.5 seconds, you would have a 2x speedup.
 """
 
-# ╔═╡ d62e68e2-13be-48f8-9599-49e358dbde59
-hint(md"Try to modify a `Dict` from various threads and see what happens")
+# ╔═╡ 3b82d62e-26ca-42a2-b8dd-2e2cf53666e6
+hint(md"
+Look at the median time in the output of `@benchmark`.
+")
 
-# ╔═╡ 7df074c1-1f24-475d-b446-1c16f9c86538
-let
-	# Your code here
-end
-
-# ╔═╡ 95dfeb17-7134-41e1-8015-dc14845f369a
-answer_31 = md"""
-Your answer here
-"""
-
-# ╔═╡ 570e7ebe-252f-4cd7-b3a5-31232e5642ec
+# ╔═╡ 2cbe52a4-9959-4a96-bf65-39223aacefc7
 md"""
-It is useful to remember that memory management is the main difference between multithreading and [multiprocessing / distributed computing](https://docs.julialang.org/en/v1/manual/distributed-computing/).
-The latter assumes that each process or machine has its own memory.
-This makes it easier to write correct code, but the costs of exchanging information between processes are usually higher.
-We will not give more details at this stage.
+> Your answer here
 """
 
-# ╔═╡ d8611f20-387b-40d1-9490-f7bf0a93a437
-md"""
-## 3.2 GPU computing (optional)
-"""
-
-# ╔═╡ 56bac60c-65ff-4b5c-a5ca-29a723a79d89
-md"""
-GPU computing exploits the graphics card of a computer, which is why its implementation is hardware-dependent.
-The most prominent package is [CUDA.jl](https://juliagpu.org/) for NVIDIA GPUs, but Intel and AMD GPUs can be used as well (see the JuliaGPU [website](https://juliagpu.org/)).
-The CUDA.jl [tutorial](https://cuda.juliagpu.org/stable/tutorials/introduction/) is a very interesting read if you want to understand what happens under the hood.
-"""
-
-# ╔═╡ 51041f7e-19ce-482d-b993-4b9d80e0745c
-md"""
-Programming for GPUs relies on "kernels", basic routines that generate very efficient and highly parallel machine code.
-The package [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl) allows us to write generic kernels that can be specialized for several types of devices.
-
-Here is a simple kernel that performs in-place elementwise multiplication.
-"""
-
-# ╔═╡ a151f96e-ab07-4b51-9213-45c36e588ab0
-@kernel function double_kernel!(a)
-    i = @index(Global, Linear)  # replaces the for loop, parallelizes along i
-	a[i] *= 2
-end
-
-# ╔═╡ c736fb2c-3afc-456d-a0fa-44caa067dd2d
-md"""
-When looking at this kernel, it's important to note that there is no outer `for` loop.
-Instead, we are essentially programming what each individual core (called a thread) does.
-Because of this, the kernel needs to be configured to know:
-- How many cores you want to run with, which is called the `workgroupsize` (or `blocksize` in CUDA.jl). In the case of GPU computing, the `workgroupsize` is often on the order of 100s (so 256, for example), whereas for CPU computing, we better choose something like the number `Threads.nthreads()` of available threads.
-- The maximum size to "iterate over", which is called the `ndrange`. As an example, you might run a kernel with 256 unique computational threads (`workgroupsize = 256`) that needs to do something with an array of size 1024 (`ndrange = 1024`). In this case, each computational thread would need execute the kernel 4 times.
-"""
-
-# ╔═╡ 85be94f8-452b-4fdc-a195-4e9e474b83b8
-md"""
-We now show how to use this kernel on a specific device, in this case the CPU.
-This is a good practice to debug your code locally before running it on a GPU-enabled machine.
-"""
-
-# ╔═╡ 150b90bd-47bb-4f34-ba88-ba3e1d458811
-let
-	a = ones(1024)
-	device = KernelAbstractions.get_device(a)  # where the array is stored
-	workgroupsize = device isa GPU ? 256 : Threads.nthreads()  # how much parallelism
-	@info "Kernel" device workgroupsize
-	kernel! = double_kernel!(device, workgroupsize)  # prepare kernel for device
-	event = kernel!(a; ndrange=length(a))  # specify range for i & launch kernel
-	wait(event)  # wait for the computation to finish on the device
-	sum(a)
-end
-
-# ╔═╡ a8fa5ee2-0b88-4760-a7c1-3e7b8a31d6a2
-md"""
-If we want to migrate to the GPU, we only need to use the dedicated array type: `CuArray` from CUDA.jl. 
-"""
-
-# ╔═╡ a85927b0-152a-4a55-a23b-0ff560c40ead
+# ╔═╡ 24d0d3a0-41d9-46b2-addb-2ef9292fb3a5
 md"""
 !!! danger "Task 3.2"
-	Copy the cell above and initialize `a` as a `CuVector` instead.
-	- What is the new `device`?
-	- What might happen if we removed the line `wait(event)`?
+	What value did you observe for the mean deviation between the matrix elements computed on the CPU vs. GPU?
 """
 
-# ╔═╡ e57cb666-08fd-40b1-9cff-fd19b82563d7
-hint(md"In practice you won't see the effect of not waiting for this very fast kernel, but in other cases you might")
-
-# ╔═╡ d7a4e9c6-2a39-4004-b3a6-0beb63d34a47
-let
-	# Your code here
-end
-
-# ╔═╡ 51ad839c-42cd-4da5-a92c-a6e047fd4ec8
-answer_32 = md"""
-Your answer here
-"""
-
-# ╔═╡ b1f56b3f-85dc-4580-aa30-ef2ba0021c4d
+# ╔═╡ b4c91b27-d1a9-4a77-a47d-9ed2c477b05e
 md"""
-You may be wondering why we're going through all this trouble to multiply a vector by 2.
-Indeed, in this simple case, `a .*=  2` gives rise to efficient GPU code when applied to a `CuArray`.
-But there are many situations where vectorization is not so obvious, and things are easier to write as loops.
-Besides, the broadcasting syntax is just a facade that generates new kernels on the fly for every operation, which means writing your own kernels is often more efficient.
-"""
-
-# ╔═╡ 8339952b-9ff4-48aa-9509-2740d1aaac8c
-md"""
-# 4. Simulating the $n$-body problem
-"""
-
-# ╔═╡ 38697a0b-0f70-4101-b7e1-c37d3ad98fbb
-md"""
-We'll now practice by writing a simulation for the [$n$-body problem](https://en.wikipedia.org/wiki/N-body_problem).
-"""
-
-# ╔═╡ 9b65f47f-f569-4aee-9250-af169d13d604
-md"""
-## 4.1 Serial simulation
-"""
-
-# ╔═╡ 01b6edaf-a83f-429f-9108-35b43f6d299c
-md"""
-We consider the [$n$-body problem](https://en.wikipedia.org/wiki/N-body_problem) in $\mathbb{R}^d$.
-Let $m = (m_1, ..., m_n)$ be the vector of masses and $\mathbf{p}(t) = (\mathbf{p}_1(t), ..., \mathbf{p}_n(t))$ be the vector of positions at a given time $t$.
-For each particle $i \in [n]$, Newton's second law gives us
-```math
-	m_i \overset{..}{\mathbf{p}}_i = \sum_{j \neq i} \frac{G m_j m_i}{\lVert \mathbf{p}_j - \mathbf{p}_i \rVert^2} \mathbf{u}_{ij} \quad \text{where} \quad \mathbf{u}_{ij} = \frac{\mathbf{p}_j - \mathbf{p}_i}{\lVert \mathbf{p}_j - \mathbf{p}_i \rVert}
-```
-We will simulate this system of ODEs using [Verlet integration](https://en.wikipedia.org/wiki/Verlet_integration), and to avoid extreme behavior we replace $r_{ij}^2 = \lVert \mathbf{p}_j - \mathbf{p}_i \rVert^2$ with $r_{ij}^2 + 1$ (this is called softening).
-"""
-
-# ╔═╡ 8429ef19-3306-4d85-b8f6-194a04711dd2
-md"""
-### 4.1.1 Storage
-"""
-
-# ╔═╡ 2087f4f2-9d85-4358-bf7f-9ea53db7eead
-struct Particles{
-    Mas<:AbstractVector{<:Real},
-    Pos<:AbstractVector{<:AbstractVector{<:Real}},
-    Acc<:AbstractVector{<:AbstractVector{<:Real}},
-}
-    masses::Mas
-    positions::Pos
-    last_positions::Pos
-    accelerations::Acc
-end
-
-# ╔═╡ ac093aed-406b-4e78-b746-d61ee37829e7
-"""
-	initialize_particles(ArrayType; n, d, rng)
-
-Create `n` particles in dimension `d` with random initial positions and masses (using the generator `rng`). Store them as `SVector`s within a vector of type `ArrayType`.
-"""
-function initialize_particles(
-    ::Type{ArrayType}=Array; n, d, rng=Random.GLOBAL_RNG
-) where {ArrayType<:AbstractArray}
-    masses = ArrayType(rand(rng, Float32, n))
-    positions = ArrayType([SVector(Tuple(rand(rng, Float32, d))) for i in 1:n])
-    last_positions = copy(positions)
-    accelerations = ArrayType([SVector(Tuple(zeros(Float32, d))) for i in 1:n])
-    return Particles(masses, positions, last_positions, accelerations)
-end
-
-# ╔═╡ e7dc5fd6-6b12-453e-9ccf-910af73850e6
-md"""
-### 4.1.2 Simulation
-"""
-
-# ╔═╡ 2228ceb5-1f53-4e68-9913-e2edafa0979f
-"""
-	xsqrtx(y)
-
-Compute `y^(3/2)` in an efficient way.
-"""
-xsqrtx(y) = y * sqrt(y)
-
-# ╔═╡ 5559bdac-56be-4230-a7e0-2efcc14d03e0
-"""
-	update_acceleration!(accelerations, masses, positions, i)
-
-Update the acceleration for particle `i` using Newton's 2nd law.
-"""
-function update_acceleration!(accelerations, masses, positions, i)
-	n = length(masses)
-    pᵢ = positions[i]
-    aᵢ = zero(accelerations[i])  # zero vector of the same type
-    for j in 1:n
-        if j != i
-            mⱼ, pⱼ = masses[j], positions[j]
-			rᵢⱼ² = sum(abs2, pⱼ - pᵢ)
-            aᵢ += (mⱼ / xsqrtx(rᵢⱼ² + 1)) * (pⱼ - pᵢ)  # acceleration = force / mass
-        end
-    end
-    accelerations[i] = aᵢ
-end
-
-# ╔═╡ e7ea34ed-4dd5-4fa8-806f-af157bfb6590
-"""
-	update_positions!(positions, last_positions, accelerations, i, Δt)
-
-Update all current and last positions for particle `i` for a time interval `Δt` using Verlet integration.
-"""
-function update_position!(positions, last_positions, accelerations, i, Δt)
-    pᵢ, last_pᵢ, aᵢ = positions[i], last_positions[i], accelerations[i]
-    positions[i] = 2 * pᵢ - last_pᵢ + aᵢ * Δt^2  # Verlet integration
-    last_positions[i] = pᵢ
-end
-
-# ╔═╡ 4a0cba53-3e9c-4277-9a30-7455741a5f50
-"""
-	nbody!(particles; Δt, steps)
-
-Run `steps` intervals of an n-body simulation on a set of `particles`, where each intervals has duration `Δt`.
-"""
-function nbody!(particles::Particles; Δt, steps)
-	# the following syntax parses the fields of a struct
-	(; masses, positions, last_positions, accelerations) = particles
-	n = length(masses)
-    for s in 1:steps
-        for i in 1:n
-            update_acceleration!(accelerations, masses, positions, i)
-        end
-        for i in 1:n
-            update_position!(positions, last_positions, accelerations, i, Δt)
-        end
-    end
-end
-
-# ╔═╡ 51061846-6f58-479b-ab24-0a773c2af034
-let
-	n, d, Δt, steps = 5, 2, 0.01, 10
-	particles = initialize_particles(Array; n=n, d=d)
-	nbody!(particles; Δt=Δt, steps=steps)
-end
-
-# ╔═╡ fe4b8a41-02a2-4c7f-996f-6913fc62713e
-md"""
-!!! danger "Task 4.1"
-	The `nbody!` function contains 3 nested loops: on `s`, `i` and `j`.
-	(The loop on `j` is within `update_acceleration!`.)
-	Which one of them
-	1. can be parallelized easily?
-	1. could be parallelized if we modified the code a little bit?
-	1. should never be parallelized?
-"""
-
-# ╔═╡ 23ef2c59-6301-4e42-81e2-6c4481f4bb9b
-answer_41 = md"""
-1. Your answer here
-2. Your answer here
-3. Your answer here
-"""
-
-# ╔═╡ 3cd38682-aa95-4d27-831f-814641b92754
-md"""
-In what follows, we will focus on parallelizing the answer to 1., because it requires the least effort.
-"""
-
-# ╔═╡ 903e087d-a77e-4c56-9761-05c54a0cc81c
-md"""
-### 4.1.3 Plotting
-"""
-
-# ╔═╡ 48da2f41-d9e2-4c8b-b23f-9d7e1346769f
-function plot_nbody(; n, d, Δt, steps)
-	particles = initialize_particles(Array; n=n, d=d)
-	(; masses, positions, last_positions, accelerations) = particles
-	n = length(masses)
-	trajectories = [copy(positions)]
-	for s in 1:steps
-        for i in 1:n
-            update_acceleration!(accelerations, masses, positions, i)
-        end
-        for i in 1:n
-            update_position!(positions, last_positions, accelerations, i, Δt)
-        end
-		push!(trajectories, copy(positions))
-    end
-	@gif for s in 1:steps
-		scatter(
-			map(first, trajectories[s]),
-			map(last, trajectories[s]),
-			markershape=:circle,
-			xlim=(-0.5, 1.5),
-			ylim=(-0.5, 1.5),
-			label=nothing,
-			title="n-body simulation, time=$s"
-		)
-	end every 10
-end
-
-# ╔═╡ 17c5ee50-7baa-4d28-a39a-b9f58eaf7f0a
-plot_nbody(n=5, d=2, Δt=0.01, steps=1000)
-
-# ╔═╡ 960288de-ab52-4bae-baa2-6c582c26c2b2
-md"""
-## 4.2 Multithreaded simulation
-"""
-
-# ╔═╡ cc734b56-93b2-40c3-acbb-2d18b028ae21
-md"""
-!!! danger "Task 4.2"
-	Implement `nbody_threaded!` as a multithreaded version of `nbody!`
-"""
-
-# ╔═╡ cc92ac8f-8430-4ee1-8090-31b4dbd0253b
-# Your code here
-
-# ╔═╡ 9ffe6c48-20f7-4866-af2e-22977315fa60
-let
-	if @isdefined nbody_threaded!
-		n, d, Δt, steps = 5, 2, 0.01, 10
-		particles = initialize_particles(Array; n=n, d=d)
-		nbody_threaded!(particles; Δt=Δt, steps=steps)
-	end
-end
-
-# ╔═╡ 3fc6b27e-ad34-4fa2-8405-91261d7b3384
-check_42 = let
-	if @isdefined nbody_threaded!
-		n, d, Δt, steps = 5, 2, 0.01, 10
-		particles = initialize_particles(Array; n=n, d=d, rng=MersenneTwister(63))
-		particles_ref = deepcopy(particles)
-		nbody!(particles_ref; Δt=Δt, steps=steps)
-		try
-			nbody_threaded!(particles; Δt=Δt, steps=steps)
-			if particles.positions ≈ particles_ref.positions
-				correct(md"`nbody_threaded!` returns the same result as `nbody!`")
-			else
-				almost(md"`nbody_threaded!` returns an incorrect result")
-			end
-		catch e
-			almost(md"`nbody_threaded!` throws a $(typeof(e))")
-		end
-	else
-		almost(md"You need to define `nbody_threaded!`")
-	end
-end
-
-# ╔═╡ c1ad1392-005d-4c99-826f-be9c7c240f88
-md"""
-!!! danger "Task 4.3"
-	Benchmark `nbody_threaded!` against `nbody!` with `Vector` storage.
-	Comment on the cases where a speedup is achieved
-"""
-
-# ╔═╡ 4a330f54-a220-466c-af5e-ad70d5387d5b
-hint(md"Try playing with the number of particles")
-
-# ╔═╡ 3313e718-9cd2-41d9-8615-b72871f9fda5
-# Your code here
-
-# ╔═╡ 904e5a60-65ce-419e-9f8c-32b29a98d0f4
-answer_43 = md"""
-Your answer here
-"""
-
-# ╔═╡ 09d5ed7f-5c78-470b-a832-d6ce951dc8a2
-md"""
-## 4.3 GPU simulation (optional)
-"""
-
-# ╔═╡ 449d8103-dc1f-4496-bd90-a4718d9f30ea
-md"""
-!!! danger "Task 4.4"
-	Implement `nbody_gpu!` as a GPU-compatible version of `nbody!`
-"""
-
-# ╔═╡ 0b60df5e-732d-47cb-ad56-9c9a81fe374b
-hint(md"Start by writing two kernels `update_accelerations_kernel!` and `update_positions_kernel!`. Then specialize both of them for the right device inside `nbody_gpu!`, as shown in section 1.2. Don't forget to `wait` until the first kernel is done running before launching the second one!")
-
-# ╔═╡ f8eef0e0-eaa8-4161-be01-b8551af21f1f
-@kernel function update_accelerations_kernel!(accelerations, masses, positions)
-    # Your code here
-end
-
-# ╔═╡ f83755c7-d6ff-4438-b9a5-659561d1b6dc
-@kernel function update_positions_kernel!(
-	positions, last_positions, accelerations, Δt
-)
-    # Your code here
-end
-
-# ╔═╡ f7e8e7c9-d71d-48ee-9909-a6a5a4e06d1b
-function nbody_gpu!(particles::Particles; Δt, steps)
-	(; masses, positions, last_positions, accelerations) = particles
-	# Your code here
-end
-
-# ╔═╡ ba83ffdd-480e-496e-b8d6-4475cffd9ea8
-let
-	if @isdefined nbody_gpu!
-		n, d, Δt, steps = 5, 2, 0.01, 10
-		particles = initialize_particles(Array; n=n, d=d)
-		nbody_gpu!(particles; Δt=Δt, steps=steps)
-	end
-end
-
-# ╔═╡ 04ac0905-2ab0-4e0c-abbb-343a96c10c16
-let
-	if (@isdefined nbody_gpu!) && CUDA.has_cuda_gpu()
-		n, d, Δt, steps = 5, 2, 0.01, 10
-		particles = initialize_particles(CuArray; n=n, d=d)
-		nbody_gpu!(particles; Δt=Δt, steps=steps)
-	end
-end
-
-# ╔═╡ a02b2923-bfb0-4cfa-bf05-c1e37d0f9420
-check_44 = let
-	if (@isdefined nbody_gpu!) && CUDA.has_cuda_gpu()
-		n, d, Δt, steps = 5, 2, 0.01, 10
-		particles_cpu = initialize_particles(Array; n=n, d=d, rng=MersenneTwister(63))
-		particles_gpu = initialize_particles(CuArray; n=n, d=d, rng=MersenneTwister(63))
-		particles_cpu_ref = deepcopy(particles_cpu)
-		nbody!(particles_cpu_ref; Δt=Δt, steps=steps)
-		try
-			nbody_gpu!(particles_cpu; Δt=Δt, steps=steps)
-			if particles_cpu.positions ≈ particles_cpu_ref.positions
-				try
-					nbody_gpu!(particles_gpu; Δt=Δt, steps=steps)
-					if Array(particles_gpu.positions) ≈ particles_cpu_ref.positions
-						correct(md"`nbody_threaded!` returns the same result as `nbody!` on both CPU and GPU arrays")
-					else
-						almost(md"`nbody_gpu!` returns an incorrect result on GPU arrays")
-					end
-				catch e
-					almost(md"`nbody_gpu!` throws a $(typeof(e)) on GPU arrays")
-				end
-			else
-				almost(md"`nbody_gpu!` returns an incorrect result on CPU arrays")
-			end
-		catch e
-			almost(md"`nbody_gpu!` throws a $(typeof(e)) on CPU arrays")
-		end
-	else
-		almost(md"You need to define `nbody_gpu!` and have a CUDA-enabled machine")
-	end
-end
-
-# ╔═╡ 4c1f3efe-2374-4471-ae5f-48d7eff4d379
-md"""
-!!! danger "Task 4.5"
-	Benchmark `nbody_gpu!` on a `CuVector` against `nbody_threaded!` on a `Vector`.
-	Comment on the cases where a speedup is achieved
-"""
-
-# ╔═╡ 2db23a84-50f2-4b28-9ea2-218cd850a157
-let
-	# Your code here
-end
-
-# ╔═╡ dc7cfac4-2076-4b7b-b469-d3399cdb88e2
-answer_45 = md"""
-Your answer here
-"""
-
-# ╔═╡ ccce9e18-a32f-49c7-9cdf-b465d999272e
-tick(done) = done ? "✓" : "∅"
-
-# ╔═╡ 45e5d832-a12b-4512-903a-80899f3cc2a4
-md"""
-Task recap (measures progress, not accuracy):
-
-| Task | Status                                             |            |
-| ---- | -------------------------------------------------- | ---------- |
-| 1.1  | $(tick(answer_11 != (1.0,1.0)))                    |            |
-| 1.2  | $(tick(answer_12 != md"Your comment here"))        |            |
-| 2.1  | $(tick(answer_21 != md"Your answer here"))         |            |
-| 2.2  | $(tick(answer_22 != (0.0,0.0)))                    |            |
-| 2.3  | $(tick(answer_23 != md"Your answer here"))         |            |
-| 3.1  | $(tick(answer_31 != md"Your answer here"))         |            |
-| 3.2  | $(tick(answer_32 != md"Your answer here"))         | (optional) |
-| 4.1  | $(tick(string(answer_41) != "1. Your answer here\n2. Your answer here\n3. Your answer here\n"))         |            |
-| 4.2  | $(tick(check_42.content[1].category == "correct")) |            |
-| 4.3  | $(tick(answer_43 != md"Your answer here"))         |            |
-| 4.4  | $(tick(check_44.content[1].category == "correct")) | (optional) |
-| 4.5  | $(tick(answer_45 != md"Your answer here"))         | (optional) |
+> Your answer here
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
-KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
+ImageShow = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
+KrylovKit = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoTeachingTools = "661c6b06-c737-4d37-b85c-46df65de6f69"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-ProgressLogging = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-BenchmarkTools = "~1.3.2"
-CUDA = "~4.0.1"
-CUDAKernels = "~0.4.7"
-KernelAbstractions = "~0.8.6"
-Plots = "~1.39.0"
-PlutoTeachingTools = "~0.2.13"
-PlutoUI = "~0.7.52"
-ProgressLogging = "~0.1.4"
-StaticArrays = "~1.6.5"
+BenchmarkTools = "~1.3.1"
+FileIO = "~1.16.0"
+ImageIO = "~0.6.6"
+ImageShow = "~0.3.6"
+KrylovKit = "~0.5.4"
+PlutoTeachingTools = "~0.2.3"
+PlutoUI = "~0.7.48"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.3"
+julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "83a8d26084b46586c6ea07f3a8dbd2eff60b33fe"
+project_hash = "96c27fda5b3ffbfc2845104e3f62759ddf425b2b"
 
 [[deps.AbstractFFTs]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "d92ad398961a3ed262d8bf04a1a2b8340f915fef"
+deps = ["ChainRulesCore", "LinearAlgebra"]
+git-tree-sha1 = "69f7020bd72f069c219b5e8c236c1fa90d2cb409"
 uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
-version = "1.5.0"
-
-    [deps.AbstractFFTs.extensions]
-    AbstractFFTsChainRulesCoreExt = "ChainRulesCore"
-    AbstractFFTsTestExt = "Test"
-
-    [deps.AbstractFFTs.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+version = "1.2.1"
 
 [[deps.AbstractPlutoDingetjes]]
 deps = ["Pkg"]
-git-tree-sha1 = "91bd53c39b9cbfb5ef4b015e8b582d344532bd0a"
+git-tree-sha1 = "8eaf9f1b4921132a4cff3f36a1d9ba923b14a481"
 uuid = "6e696c72-6542-2067-7265-42206c756150"
-version = "1.2.0"
+version = "1.1.4"
 
 [[deps.Adapt]]
-deps = ["LinearAlgebra", "Requires"]
-git-tree-sha1 = "76289dc51920fdc6e0013c872ba9551d54961c24"
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "195c5505521008abea5aee4f96930717958eac6f"
 uuid = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-version = "3.6.2"
-weakdeps = ["StaticArrays"]
-
-    [deps.Adapt.extensions]
-    AdaptStaticArraysExt = "StaticArrays"
+version = "3.4.0"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
@@ -990,96 +1199,37 @@ version = "1.1.1"
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
 
-[[deps.Atomix]]
-deps = ["UnsafeAtomics"]
-git-tree-sha1 = "c06a868224ecba914baa6942988e2f2aade419be"
-uuid = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
-version = "0.1.0"
-
-[[deps.BFloat16s]]
-deps = ["LinearAlgebra", "Printf", "Random", "Test"]
-git-tree-sha1 = "dbf84058d0a8cbbadee18d25cf606934b22d7c66"
-uuid = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
-version = "0.4.2"
-
 [[deps.Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.BenchmarkTools]]
 deps = ["JSON", "Logging", "Printf", "Profile", "Statistics", "UUIDs"]
-git-tree-sha1 = "d9a9701b899b30332bbcb3e1679c41cce81fb0e8"
+git-tree-sha1 = "4c10eee4af024676200bc7752e536f858c6b8f93"
 uuid = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-version = "1.3.2"
-
-[[deps.BitFlags]]
-git-tree-sha1 = "43b1a4a8f797c1cddadf60499a8a077d4af2cd2d"
-uuid = "d1d4a3ce-64b1-5f1a-9ba4-7e7e69966f35"
-version = "0.1.7"
-
-[[deps.Bzip2_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
-uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
-version = "1.0.8+0"
+version = "1.3.1"
 
 [[deps.CEnum]]
 git-tree-sha1 = "eb4cb44a499229b3b8426dcfb5dd85333951ff90"
 uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 version = "0.4.2"
 
-[[deps.CUDA]]
-deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Preferences", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions"]
-git-tree-sha1 = "edff14c60784c8f7191a62a23b15a421185bc8a8"
-uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "4.0.1"
+[[deps.ChainRulesCore]]
+deps = ["Compat", "LinearAlgebra", "SparseArrays"]
+git-tree-sha1 = "e7ff6cadf743c098e08fca25c91103ee4303c9bb"
+uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+version = "1.15.6"
 
-[[deps.CUDAKernels]]
-deps = ["Adapt", "CUDA", "KernelAbstractions", "StaticArrays", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "1680366a69e9c95744ef23a239e6cfe61cf2e1ca"
-uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
-version = "0.4.7"
-
-[[deps.CUDA_Driver_jll]]
-deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
-git-tree-sha1 = "75d7896d1ec079ef10d3aee8f3668c11354c03a1"
-uuid = "4ee394cb-3365-5eb0-8335-949819d2adfc"
-version = "0.2.0+0"
-
-[[deps.CUDA_Runtime_Discovery]]
-deps = ["Libdl"]
-git-tree-sha1 = "d6b227a1cfa63ae89cb969157c6789e36b7c9624"
-uuid = "1af6417a-86b4-443c-805f-a4643ffb695f"
-version = "0.1.2"
-
-[[deps.CUDA_Runtime_jll]]
-deps = ["Artifacts", "CUDA_Driver_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "ed00f777d2454c45f5f49634ed0a589da07ee0b0"
-uuid = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
-version = "0.2.4+1"
-
-[[deps.Cairo_jll]]
-deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
-uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
-version = "1.16.1+1"
+[[deps.ChangesOfVariables]]
+deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
+git-tree-sha1 = "38f7a08f19d8810338d4f5085211c7dfa5d5bdd8"
+uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
+version = "0.1.4"
 
 [[deps.CodeTracking]]
 deps = ["InteractiveUtils", "UUIDs"]
-git-tree-sha1 = "c0216e792f518b39b22212127d4a84dc31e4e386"
+git-tree-sha1 = "cc4bd91eba9cdbbb4df4746124c22c0832a460d6"
 uuid = "da1fd8a2-8d9e-5ec2-8556-3022fb5608a2"
-version = "1.3.5"
-
-[[deps.CodecZlib]]
-deps = ["TranscodingStreams", "Zlib_jll"]
-git-tree-sha1 = "02aa26a4cf76381be7f66e020a3eddeb27b0a092"
-uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
-version = "0.7.2"
-
-[[deps.ColorSchemes]]
-deps = ["ColorTypes", "ColorVectorSpace", "Colors", "FixedPointNumbers", "PrecompileTools", "Random"]
-git-tree-sha1 = "67c1f244b991cad9b0aa4b7540fb758c2488b129"
-uuid = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-version = "3.24.0"
+version = "1.1.1"
 
 [[deps.ColorTypes]]
 deps = ["FixedPointNumbers", "Random"]
@@ -1088,67 +1238,37 @@ uuid = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
 version = "0.11.4"
 
 [[deps.ColorVectorSpace]]
-deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "Requires", "Statistics", "TensorCore"]
-git-tree-sha1 = "a1f44953f2382ebb937d60dafbe2deea4bd23249"
+deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "SpecialFunctions", "Statistics", "TensorCore"]
+git-tree-sha1 = "d08c20eef1f2cbc6e60fd3612ac4340b89fea322"
 uuid = "c3611d14-8923-5661-9e6a-0046d554d3a4"
-version = "0.10.0"
-weakdeps = ["SpecialFunctions"]
-
-    [deps.ColorVectorSpace.extensions]
-    SpecialFunctionsExt = "SpecialFunctions"
+version = "0.9.9"
 
 [[deps.Colors]]
 deps = ["ColorTypes", "FixedPointNumbers", "Reexport"]
-git-tree-sha1 = "fc08e5930ee9a4e03f84bfb5211cb54e7769758a"
+git-tree-sha1 = "417b0ed7b8b838aa6ca0a87aadf1bb9eb111ce40"
 uuid = "5ae59095-9a9b-59fe-a467-6f913c188581"
-version = "0.12.10"
+version = "0.12.8"
 
 [[deps.Compat]]
-deps = ["UUIDs"]
-git-tree-sha1 = "8a62af3e248a8c4bad6b32cbbe663ae02275e32c"
+deps = ["Dates", "LinearAlgebra", "UUIDs"]
+git-tree-sha1 = "3ca828fe1b75fa84b021a7860bd039eaea84d2f2"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "4.10.0"
-weakdeps = ["Dates", "LinearAlgebra"]
-
-    [deps.Compat.extensions]
-    CompatLinearAlgebraExt = "LinearAlgebra"
+version = "4.3.0"
 
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "1.0.5+0"
-
-[[deps.ConcurrentUtilities]]
-deps = ["Serialization", "Sockets"]
-git-tree-sha1 = "5372dbbf8f0bdb8c700db5367132925c0771ef7e"
-uuid = "f0e56b4a-5159-44fe-b623-3e5288b988bb"
-version = "2.2.1"
-
-[[deps.Contour]]
-git-tree-sha1 = "d05d9e7b7aedff4e5b51a029dced05cfb6125781"
-uuid = "d38c429a-6771-53c6-b99e-75d170b6e991"
-version = "0.6.2"
-
-[[deps.DataAPI]]
-git-tree-sha1 = "8da84edb865b0b5b0100c0666a9bc9a0b71c553c"
-uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.15.0"
+version = "0.5.2+0"
 
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
-git-tree-sha1 = "3dbd312d370723b6bb43ba9d02fc36abade4518d"
+git-tree-sha1 = "d1fff3a548102f48987a52a2e0d114fa97d730f0"
 uuid = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-version = "0.18.15"
+version = "0.18.13"
 
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
-
-[[deps.DelimitedFiles]]
-deps = ["Mmap"]
-git-tree-sha1 = "9e2f36d3c96a820c678f2f1f1782582fcf685bae"
-uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
-version = "1.9.1"
 
 [[deps.Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -1156,49 +1276,20 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.DocStringExtensions]]
 deps = ["LibGit2"]
-git-tree-sha1 = "2fb1e02f2b635d0845df5d7c167fec4dd739b00d"
+git-tree-sha1 = "c36550cb29cbe373e95b3f40486b9a4148f89ffd"
 uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
-version = "0.9.3"
+version = "0.9.2"
 
 [[deps.Downloads]]
 deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 version = "1.6.0"
 
-[[deps.EpollShim_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "8e9441ee83492030ace98f9789a654a6d0b1f643"
-uuid = "2702e6a9-849d-5ed8-8c21-79e8b8f9ee43"
-version = "0.0.20230411+0"
-
-[[deps.ExceptionUnwrapping]]
-deps = ["Test"]
-git-tree-sha1 = "e90caa41f5a86296e014e148ee061bd6c3edec96"
-uuid = "460bff9d-24e4-43bc-9d9f-a8973cb893f4"
-version = "0.1.9"
-
-[[deps.Expat_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "4558ab818dcceaab612d1bb8c19cee87eda2b83c"
-uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
-version = "2.5.0+0"
-
-[[deps.ExprTools]]
-git-tree-sha1 = "27415f162e6028e81c72b82ef756bf321213b6ec"
-uuid = "e2ba6199-217a-4e67-a87a-7c52f15ade04"
-version = "0.1.10"
-
-[[deps.FFMPEG]]
-deps = ["FFMPEG_jll"]
-git-tree-sha1 = "b57e3acbe22f8484b4b5ff66a7499717fe1a9cc8"
-uuid = "c87230d0-a227-11e9-1b43-d7ebe4e7570a"
-version = "0.4.1"
-
-[[deps.FFMPEG_jll]]
-deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "JLLWrappers", "LAME_jll", "Libdl", "Ogg_jll", "OpenSSL_jll", "Opus_jll", "PCRE2_jll", "Pkg", "Zlib_jll", "libaom_jll", "libass_jll", "libfdk_aac_jll", "libvorbis_jll", "x264_jll", "x265_jll"]
-git-tree-sha1 = "74faea50c1d007c85837327f6775bea60b5492dd"
-uuid = "b22a6f82-2f65-5046-a5b2-351ab43fb4e5"
-version = "4.4.2+2"
+[[deps.FileIO]]
+deps = ["Pkg", "Requires", "UUIDs"]
+git-tree-sha1 = "7be5f99f7d15578798f338f5433b6c432ea8037b"
+uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+version = "1.16.0"
 
 [[deps.FileWatching]]
 uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
@@ -1209,100 +1300,17 @@ git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.4"
 
-[[deps.Fontconfig_jll]]
-deps = ["Artifacts", "Bzip2_jll", "Expat_jll", "FreeType2_jll", "JLLWrappers", "Libdl", "Libuuid_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "21efd19106a55620a188615da6d3d06cd7f6ee03"
-uuid = "a3f928ae-7b40-5064-980b-68af3947d34b"
-version = "2.13.93+0"
-
 [[deps.Formatting]]
 deps = ["Printf"]
 git-tree-sha1 = "8339d61043228fdd3eb658d86c926cb282ae72a8"
 uuid = "59287772-0a20-5a39-b81b-1366585eb4c0"
 version = "0.4.2"
 
-[[deps.FreeType2_jll]]
-deps = ["Artifacts", "Bzip2_jll", "JLLWrappers", "Libdl", "Zlib_jll"]
-git-tree-sha1 = "d8db6a5a2fe1381c1ea4ef2cab7c69c2de7f9ea0"
-uuid = "d7e528f0-a631-5988-bf34-fe36492bcfd7"
-version = "2.13.1+0"
-
-[[deps.FriBidi_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "aa31987c2ba8704e23c6c8ba8a4f769d5d7e4f91"
-uuid = "559328eb-81f9-559d-9380-de523a88c83c"
-version = "1.0.10+0"
-
-[[deps.GLFW_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Pkg", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "d972031d28c8c8d9d7b41a536ad7bb0c2579caca"
-uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.8+0"
-
-[[deps.GPUArrays]]
-deps = ["Adapt", "GPUArraysCore", "LLVM", "LinearAlgebra", "Printf", "Random", "Reexport", "Serialization", "Statistics"]
-git-tree-sha1 = "2e57b4a4f9cc15e85a24d603256fe08e527f48d1"
-uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "8.8.1"
-
-[[deps.GPUArraysCore]]
-deps = ["Adapt"]
-git-tree-sha1 = "2d6ca471a6c7b536127afccfa7564b5b39227fe0"
-uuid = "46192b85-c4d5-4398-a991-12ede77f4527"
-version = "0.1.5"
-
-[[deps.GPUCompiler]]
-deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
-git-tree-sha1 = "19d693666a304e8c371798f4900f7435558c7cde"
-uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
-version = "0.17.3"
-
-[[deps.GR]]
-deps = ["Artifacts", "Base64", "DelimitedFiles", "Downloads", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Preferences", "Printf", "Random", "Serialization", "Sockets", "TOML", "Tar", "Test", "UUIDs", "p7zip_jll"]
-git-tree-sha1 = "27442171f28c952804dede8ff72828a96f2bfc1f"
-uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.72.10"
-
-[[deps.GR_jll]]
-deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "FreeType2_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Qt6Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "025d171a2847f616becc0f84c8dc62fe18f0f6dd"
-uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.72.10+0"
-
-[[deps.Gettext_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Libiconv_jll", "Pkg", "XML2_jll"]
-git-tree-sha1 = "9b02998aba7bf074d14de89f9d37ca24a1a0b046"
-uuid = "78b55507-aeef-58d4-861c-77aaff3498b1"
-version = "0.21.0+0"
-
-[[deps.Glib_jll]]
-deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE2_jll", "Zlib_jll"]
-git-tree-sha1 = "e94c92c7bf4819685eb80186d51c43e71d4afa17"
-uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
-version = "2.76.5+0"
-
-[[deps.Graphite2_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "344bf40dcab1073aca04aa0df4fb092f920e4011"
-uuid = "3b182d85-2403-5c21-9c21-1e1f0cc25472"
-version = "1.3.14+0"
-
-[[deps.Grisu]]
-git-tree-sha1 = "53bb909d1151e57e2484c3d1b53e19552b887fb2"
-uuid = "42e2da0e-8278-4e71-bc24-59509adca0fe"
-version = "1.0.2"
-
-[[deps.HTTP]]
-deps = ["Base64", "CodecZlib", "ConcurrentUtilities", "Dates", "ExceptionUnwrapping", "Logging", "LoggingExtras", "MbedTLS", "NetworkOptions", "OpenSSL", "Random", "SimpleBufferStream", "Sockets", "URIs", "UUIDs"]
-git-tree-sha1 = "5eab648309e2e060198b45820af1a37182de3cce"
-uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
-version = "1.10.0"
-
-[[deps.HarfBuzz_jll]]
-deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "Graphite2_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg"]
-git-tree-sha1 = "129acf094d168394e80ee1dc4bc06ec835e510a3"
-uuid = "2e76f6c2-a576-52d4-95c1-20adfe4de566"
-version = "2.8.1+1"
+[[deps.Graphics]]
+deps = ["Colors", "LinearAlgebra", "NaNMath"]
+git-tree-sha1 = "d61890399bc535850c4bf08e4e0d3a7ad0f21cbd"
+uuid = "a2bd30eb-e257-5431-a919-1863eab51364"
+version = "1.1.2"
 
 [[deps.Hyperscript]]
 deps = ["Test"]
@@ -1318,90 +1326,100 @@ version = "0.9.4"
 
 [[deps.IOCapture]]
 deps = ["Logging", "Random"]
-git-tree-sha1 = "d75853a0bdbfb1ac815478bacd89cd27b550ace6"
+git-tree-sha1 = "f7be53659ab06ddc986428d3a9dcc95f6fa6705a"
 uuid = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
-version = "0.2.3"
+version = "0.2.2"
+
+[[deps.ImageBase]]
+deps = ["ImageCore", "Reexport"]
+git-tree-sha1 = "b51bb8cae22c66d0f6357e3bcb6363145ef20835"
+uuid = "c817782e-172a-44cc-b673-b171935fbb9e"
+version = "0.1.5"
+
+[[deps.ImageCore]]
+deps = ["AbstractFFTs", "ColorVectorSpace", "Colors", "FixedPointNumbers", "Graphics", "MappedArrays", "MosaicViews", "OffsetArrays", "PaddedViews", "Reexport"]
+git-tree-sha1 = "acf614720ef026d38400b3817614c45882d75500"
+uuid = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+version = "0.9.4"
+
+[[deps.ImageIO]]
+deps = ["FileIO", "IndirectArrays", "JpegTurbo", "LazyModules", "Netpbm", "OpenEXR", "PNGFiles", "QOI", "Sixel", "TiffImages", "UUIDs"]
+git-tree-sha1 = "342f789fd041a55166764c351da1710db97ce0e0"
+uuid = "82e4d734-157c-48bb-816b-45c225c6df19"
+version = "0.6.6"
+
+[[deps.ImageShow]]
+deps = ["Base64", "FileIO", "ImageBase", "ImageCore", "OffsetArrays", "StackViews"]
+git-tree-sha1 = "b563cf9ae75a635592fc73d3eb78b86220e55bd8"
+uuid = "4e3cecfd-b093-5904-9786-8bbb286a6a31"
+version = "0.3.6"
+
+[[deps.Imath_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "87f7662e03a649cffa2e05bf19c303e168732d3e"
+uuid = "905a6f67-0a94-5f89-b386-d35d92009cd1"
+version = "3.1.2+0"
+
+[[deps.IndirectArrays]]
+git-tree-sha1 = "012e604e1c7458645cb8b436f8fba789a51b257f"
+uuid = "9b13fd28-a010-5f03-acff-a1bbcff69959"
+version = "1.0.0"
+
+[[deps.Inflate]]
+git-tree-sha1 = "5cd07aab533df5170988219191dfad0519391428"
+uuid = "d25df0c9-e2be-5dd7-82c8-3ad0b3e990b9"
+version = "0.1.3"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
-[[deps.IrrationalConstants]]
-git-tree-sha1 = "630b497eafcc20001bba38a4651b327dcfc491d2"
-uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
-version = "0.2.2"
+[[deps.InverseFunctions]]
+deps = ["Test"]
+git-tree-sha1 = "49510dfcb407e572524ba94aeae2fced1f3feb0f"
+uuid = "3587e190-3f89-42d0-90ee-14403ec27112"
+version = "0.1.8"
 
-[[deps.JLFzf]]
-deps = ["Pipe", "REPL", "Random", "fzf_jll"]
-git-tree-sha1 = "f377670cda23b6b7c1c0b3893e37451c5c1a2185"
-uuid = "1019f520-868f-41f5-a6de-eb00f4b6a39c"
-version = "0.1.5"
+[[deps.IrrationalConstants]]
+git-tree-sha1 = "7fd44fd4ff43fc60815f8e764c0f352b83c49151"
+uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
+version = "0.1.1"
 
 [[deps.JLLWrappers]]
-deps = ["Artifacts", "Preferences"]
-git-tree-sha1 = "7e5d6779a1e09a36db2a7b6cff50942a0a7d0fca"
+deps = ["Preferences"]
+git-tree-sha1 = "abc9885a7ca2052a736a600f7fa66209f96506e1"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.5.0"
+version = "1.4.1"
 
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
-git-tree-sha1 = "31e996f0a15c7b280ba9f76636b3ff9e2ae58c9a"
+git-tree-sha1 = "3c837543ddb02250ef42f4738347454f95079d4e"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
-version = "0.21.4"
+version = "0.21.3"
+
+[[deps.JpegTurbo]]
+deps = ["CEnum", "FileIO", "ImageCore", "JpegTurbo_jll", "TOML"]
+git-tree-sha1 = "a77b273f1ddec645d1b7c4fd5fb98c8f90ad10a5"
+uuid = "b835a17e-a41a-41e7-81f0-2f016b05efe0"
+version = "0.1.1"
 
 [[deps.JpegTurbo_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "6f2675ef130a300a112286de91973805fcc5ffbc"
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "b53380851c6e6664204efb2e62cd24fa5c47e4ba"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
-version = "2.1.91+0"
+version = "2.1.2+0"
 
 [[deps.JuliaInterpreter]]
 deps = ["CodeTracking", "InteractiveUtils", "Random", "UUIDs"]
-git-tree-sha1 = "0592b1810613d1c95eeebcd22dc11fba186c2a57"
+git-tree-sha1 = "0f960b1404abb0b244c1ece579a0ec78d056a5d1"
 uuid = "aa1ae85d-cabe-5617-a682-6adf51b2e16a"
-version = "0.9.26"
+version = "0.9.15"
 
-[[deps.KernelAbstractions]]
-deps = ["Adapt", "Atomix", "InteractiveUtils", "LinearAlgebra", "MacroTools", "SparseArrays", "StaticArrays", "UUIDs", "UnsafeAtomics", "UnsafeAtomicsLLVM"]
-git-tree-sha1 = "cf9cae1c4c1ff83f6c02cfaf01698f05448e8325"
-uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.8.6"
-
-[[deps.LAME_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "f6250b16881adf048549549fba48b1161acdac8c"
-uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
-version = "3.100.1+0"
-
-[[deps.LERC_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "bf36f528eec6634efc60d7ec062008f171071434"
-uuid = "88015f11-f218-50d7-93a8-a6af411a945d"
-version = "3.0.0+1"
-
-[[deps.LLVM]]
-deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
-git-tree-sha1 = "f044a2796a9e18e0531b9b3072b0019a61f264bc"
-uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
-version = "4.17.1"
-
-[[deps.LLVMExtra_jll]]
-deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "070e4b5b65827f82c16ae0916376cb47377aa1b5"
-uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
-version = "0.0.18+0"
-
-[[deps.LLVMOpenMP_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "f689897ccbe049adb19a065c495e75f372ecd42b"
-uuid = "1d63c593-3942-5779-bab2-d838dc0a180e"
-version = "15.0.4+0"
-
-[[deps.LZO_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "e5b909bcf985c5e2605737d2ce278ed791b89be6"
-uuid = "dd4b983a-f0e5-5f8d-a1b7-129d4a5fb1ac"
-version = "2.10.1+0"
+[[deps.KrylovKit]]
+deps = ["LinearAlgebra", "Printf"]
+git-tree-sha1 = "49b0c1dd5c292870577b8f58c51072bd558febb9"
+uuid = "0b1a1467-8014-51b9-945f-bf0ae24f4b77"
+version = "0.5.4"
 
 [[deps.LaTeXStrings]]
 git-tree-sha1 = "f2355693d6778a178ade15952b7ac47a4ff97996"
@@ -1410,21 +1428,14 @@ version = "1.3.0"
 
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Printf", "Requires"]
-git-tree-sha1 = "f428ae552340899a935973270b8d98e5a31c49fe"
+git-tree-sha1 = "ab9aa169d2160129beb241cb2750ca499b4e90e9"
 uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.16.1"
+version = "0.15.17"
 
-    [deps.Latexify.extensions]
-    DataFramesExt = "DataFrames"
-    SymEngineExt = "SymEngine"
-
-    [deps.Latexify.weakdeps]
-    DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-    SymEngine = "123dc426-2d89-5057-bbad-38513e3affd8"
-
-[[deps.LazyArtifacts]]
-deps = ["Artifacts", "Pkg"]
-uuid = "4af54fe1-eca0-43a8-85a7-787d91b784e3"
+[[deps.LazyModules]]
+git-tree-sha1 = "a560dd966b386ac9ae60bdd3a3d3a326062d3c3e"
+uuid = "8cdb02fc-e678-4876-92c5-9defec4f444e"
+version = "0.3.1"
 
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -1448,88 +1459,24 @@ version = "1.10.2+0"
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 
-[[deps.Libffi_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "0b4a5d71f3e5200a7dff793393e09dfc2d874290"
-uuid = "e9f186c6-92d2-5b65-8a66-fee21dc1b490"
-version = "3.2.2+1"
-
-[[deps.Libgcrypt_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgpg_error_jll", "Pkg"]
-git-tree-sha1 = "64613c82a59c120435c067c2b809fc61cf5166ae"
-uuid = "d4300ac3-e22c-5743-9152-c294e39db1e4"
-version = "1.8.7+0"
-
-[[deps.Libglvnd_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll", "Xorg_libXext_jll"]
-git-tree-sha1 = "6f73d1dd803986947b2c750138528a999a6c7733"
-uuid = "7e76a0d4-f3c7-5321-8279-8d96eeed0f29"
-version = "1.6.0+0"
-
-[[deps.Libgpg_error_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "c333716e46366857753e273ce6a69ee0945a6db9"
-uuid = "7add5ba3-2f88-524e-9cd5-f83b8a55f7b8"
-version = "1.42.0+0"
-
-[[deps.Libiconv_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "f9557a255370125b405568f9767d6d195822a175"
-uuid = "94ce4f54-9a6c-5748-9c1c-f9c7231a4531"
-version = "1.17.0+0"
-
-[[deps.Libmount_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "9c30530bf0effd46e15e0fdcf2b8636e78cbbd73"
-uuid = "4b2f31a3-9ecc-558c-b454-b3730dcb73e9"
-version = "2.35.0+0"
-
-[[deps.Libtiff_jll]]
-deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "LERC_jll", "Libdl", "XZ_jll", "Zlib_jll", "Zstd_jll"]
-git-tree-sha1 = "2da088d113af58221c52828a80378e16be7d037a"
-uuid = "89763e89-9b03-5906-acba-b20f662cd828"
-version = "4.5.1+1"
-
-[[deps.Libuuid_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "7f3efec06033682db852f8b3bc3c1d2b0a0ab066"
-uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
-version = "2.36.0+0"
-
 [[deps.LinearAlgebra]]
-deps = ["Libdl", "OpenBLAS_jll", "libblastrampoline_jll"]
+deps = ["Libdl", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [[deps.LogExpFunctions]]
-deps = ["DocStringExtensions", "IrrationalConstants", "LinearAlgebra"]
-git-tree-sha1 = "7d6dd4e9212aebaeed356de34ccf262a3cd415aa"
+deps = ["ChainRulesCore", "ChangesOfVariables", "DocStringExtensions", "InverseFunctions", "IrrationalConstants", "LinearAlgebra"]
+git-tree-sha1 = "94d9c52ca447e23eac0c0f074effbcd38830deb5"
 uuid = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
-version = "0.3.26"
-
-    [deps.LogExpFunctions.extensions]
-    LogExpFunctionsChainRulesCoreExt = "ChainRulesCore"
-    LogExpFunctionsChangesOfVariablesExt = "ChangesOfVariables"
-    LogExpFunctionsInverseFunctionsExt = "InverseFunctions"
-
-    [deps.LogExpFunctions.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-    ChangesOfVariables = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
-    InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
+version = "0.3.18"
 
 [[deps.Logging]]
 uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
-[[deps.LoggingExtras]]
-deps = ["Dates", "Logging"]
-git-tree-sha1 = "c1dd6d7978c12545b4179fb6153b9250c96b0075"
-uuid = "e6f89c97-d47a-5376-807f-9c37f3926c36"
-version = "1.0.3"
-
 [[deps.LoweredCodeUtils]]
 deps = ["JuliaInterpreter"]
-git-tree-sha1 = "60168780555f3e663c536500aa790b6368adc02a"
+git-tree-sha1 = "dedbebe234e06e1ddad435f5c6f4b85cd8ce55f7"
 uuid = "6f1432cf-f94c-5a45-995e-cdbf5db27b0b"
-version = "2.3.0"
+version = "2.2.2"
 
 [[deps.MIMEs]]
 git-tree-sha1 = "65f28ad4b594aebe22157d6fac869786a255b7eb"
@@ -1538,80 +1485,80 @@ version = "0.1.4"
 
 [[deps.MacroTools]]
 deps = ["Markdown", "Random"]
-git-tree-sha1 = "9ee1618cbf5240e6d4e0371d6f24065083f60c48"
+git-tree-sha1 = "42324d08725e200c23d4dfb549e0d5d89dede2d2"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
-version = "0.5.11"
+version = "0.5.10"
+
+[[deps.MappedArrays]]
+git-tree-sha1 = "e8b359ef06ec72e8c030463fe02efe5527ee5142"
+uuid = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
+version = "0.4.1"
 
 [[deps.Markdown]]
 deps = ["Base64"]
 uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
 
-[[deps.MbedTLS]]
-deps = ["Dates", "MbedTLS_jll", "MozillaCACerts_jll", "Random", "Sockets"]
-git-tree-sha1 = "03a9b9718f5682ecb107ac9f7308991db4ce395b"
-uuid = "739be429-bea8-5141-9913-cc70e7f3736d"
-version = "1.1.7"
-
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.2+0"
-
-[[deps.Measures]]
-git-tree-sha1 = "c13304c81eec1ed3af7fc20e75fb6b26092a1102"
-uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
-version = "0.3.2"
-
-[[deps.Missings]]
-deps = ["DataAPI"]
-git-tree-sha1 = "f66bdc5de519e8f8ae43bdc598782d35a25b1272"
-uuid = "e1d29d7a-bbdc-5cf2-9ac0-f12de2c33e28"
-version = "1.1.0"
+version = "2.28.0+0"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
+[[deps.MosaicViews]]
+deps = ["MappedArrays", "OffsetArrays", "PaddedViews", "StackViews"]
+git-tree-sha1 = "b34e3bc3ca7c94914418637cb10cc4d1d80d877d"
+uuid = "e94cdb99-869f-56ef-bcf0-1ae2bcbe0389"
+version = "0.3.3"
+
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2022.10.11"
+version = "2022.2.1"
 
 [[deps.NaNMath]]
 deps = ["OpenLibm_jll"]
-git-tree-sha1 = "0877504529a3e5c3343c6f8b4c0381e57e4387e4"
+git-tree-sha1 = "a7c3d1da1189a1c2fe843a3bfa04d18d20eb3211"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
+version = "1.0.1"
+
+[[deps.Netpbm]]
+deps = ["FileIO", "ImageCore"]
+git-tree-sha1 = "18efc06f6ec36a8b801b23f076e3c6ac7c3bf153"
+uuid = "f09324ee-3d7c-5217-9330-fc30815ba969"
 version = "1.0.2"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 version = "1.2.0"
 
-[[deps.Ogg_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "887579a3eb005446d514ab7aeac5d1d027658b8f"
-uuid = "e7412a2a-1a6e-54c0-be00-318e2571c051"
-version = "1.3.5+1"
+[[deps.OffsetArrays]]
+deps = ["Adapt"]
+git-tree-sha1 = "f71d8950b724e9ff6110fc948dff5a329f901d64"
+uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
+version = "1.12.8"
 
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.21+4"
+version = "0.3.20+0"
+
+[[deps.OpenEXR]]
+deps = ["Colors", "FileIO", "OpenEXR_jll"]
+git-tree-sha1 = "327f53360fdb54df7ecd01e96ef1983536d1e633"
+uuid = "52e1d378-f018-4a11-a4be-720524705ac7"
+version = "0.3.2"
+
+[[deps.OpenEXR_jll]]
+deps = ["Artifacts", "Imath_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
+git-tree-sha1 = "923319661e9a22712f24596ce81c54fc0366f304"
+uuid = "18a262bb-aa17-5467-a713-aee519bc75cb"
+version = "3.1.1+0"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
 version = "0.8.1+0"
-
-[[deps.OpenSSL]]
-deps = ["BitFlags", "Dates", "MozillaCACerts_jll", "OpenSSL_jll", "Sockets"]
-git-tree-sha1 = "51901a49222b09e3743c65b8847687ae5fc78eb2"
-uuid = "4d8831e6-92b7-49fb-bdf8-b643e874388c"
-version = "1.4.1"
-
-[[deps.OpenSSL_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "a12e56c72edee3ce6b96667745e6cbbe5498f200"
-uuid = "458c3c95-2e84-50aa-8efc-19380b2a3a95"
-version = "1.1.23+0"
 
 [[deps.OpenSpecFun_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
@@ -1619,75 +1566,39 @@ git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
 uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
 version = "0.5.5+0"
 
-[[deps.Opus_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "51a08fb14ec28da2ec7a927c4337e4332c2a4720"
-uuid = "91d4177d-7536-5919-b921-800302f37372"
-version = "1.3.2+0"
-
 [[deps.OrderedCollections]]
-git-tree-sha1 = "2e73fe17cac3c62ad1aebe70d44c963c3cfdc3e3"
+git-tree-sha1 = "85f8e6578bf1f9ee0d11e7bb1b1456435479d47c"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.6.2"
+version = "1.4.1"
 
-[[deps.PCRE2_jll]]
-deps = ["Artifacts", "Libdl"]
-uuid = "efcefdf7-47ab-520b-bdef-62a2eaa19f15"
-version = "10.42.0+0"
+[[deps.PNGFiles]]
+deps = ["Base64", "CEnum", "ImageCore", "IndirectArrays", "OffsetArrays", "libpng_jll"]
+git-tree-sha1 = "f809158b27eba0c18c269cf2a2be6ed751d3e81d"
+uuid = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
+version = "0.3.17"
+
+[[deps.PaddedViews]]
+deps = ["OffsetArrays"]
+git-tree-sha1 = "03a7a85b76381a3d04c7a1656039197e70eda03d"
+uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
+version = "0.5.11"
 
 [[deps.Parsers]]
-deps = ["Dates", "PrecompileTools", "UUIDs"]
-git-tree-sha1 = "716e24b21538abc91f6205fd1d8363f39b442851"
+deps = ["Dates"]
+git-tree-sha1 = "6c01a9b494f6d2a9fc180a08b182fcb06f0958a0"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.7.2"
-
-[[deps.Pipe]]
-git-tree-sha1 = "6842804e7867b115ca9de748a0cf6b364523c16d"
-uuid = "b98c9c47-44ae-5843-9183-064241ee97a0"
-version = "1.3.0"
-
-[[deps.Pixman_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LLVMOpenMP_jll", "Libdl"]
-git-tree-sha1 = "64779bc4c9784fee475689a1752ef4d5747c5e87"
-uuid = "30392449-352a-5448-841d-b1acce4e97dc"
-version = "0.42.2+0"
+version = "2.4.2"
 
 [[deps.Pkg]]
-deps = ["Artifacts", "Dates", "Downloads", "FileWatching", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
+deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.9.2"
+version = "1.8.0"
 
-[[deps.PlotThemes]]
-deps = ["PlotUtils", "Statistics"]
-git-tree-sha1 = "1f03a2d339f42dca4a4da149c7e15e9b896ad899"
-uuid = "ccf2f8ad-2431-5c83-bf29-c5338b663b6a"
-version = "3.1.0"
-
-[[deps.PlotUtils]]
-deps = ["ColorSchemes", "Colors", "Dates", "PrecompileTools", "Printf", "Random", "Reexport", "Statistics"]
-git-tree-sha1 = "f92e1315dadf8c46561fb9396e525f7200cdc227"
-uuid = "995b91a9-d308-5afd-9ec6-746e21dbc043"
-version = "1.3.5"
-
-[[deps.Plots]]
-deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "JLFzf", "JSON", "LaTeXStrings", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "PrecompileTools", "Preferences", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "RelocatableFolders", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "UnitfulLatexify", "Unzip"]
-git-tree-sha1 = "ccee59c6e48e6f2edf8a5b64dc817b6729f99eb5"
-uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.39.0"
-
-    [deps.Plots.extensions]
-    FileIOExt = "FileIO"
-    GeometryBasicsExt = "GeometryBasics"
-    IJuliaExt = "IJulia"
-    ImageInTerminalExt = "ImageInTerminal"
-    UnitfulExt = "Unitful"
-
-    [deps.Plots.weakdeps]
-    FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-    GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
-    IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
-    ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
-    Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+[[deps.PkgVersion]]
+deps = ["Pkg"]
+git-tree-sha1 = "f6cf8e7944e50901594838951729a1861e668cb8"
+uuid = "eebad327-c553-4316-9ea0-9fa01ccd7688"
+version = "0.3.2"
 
 [[deps.PlutoHooks]]
 deps = ["InteractiveUtils", "Markdown", "UUIDs"]
@@ -1697,33 +1608,27 @@ version = "0.0.5"
 
 [[deps.PlutoLinks]]
 deps = ["FileWatching", "InteractiveUtils", "Markdown", "PlutoHooks", "Revise", "UUIDs"]
-git-tree-sha1 = "8f5fa7056e6dcfb23ac5211de38e6c03f6367794"
+git-tree-sha1 = "0e8bcc235ec8367a8e9648d48325ff00e4b0a545"
 uuid = "0ff47ea0-7a50-410d-8455-4348d5de0420"
-version = "0.1.6"
+version = "0.1.5"
 
 [[deps.PlutoTeachingTools]]
 deps = ["Downloads", "HypertextLiteral", "LaTeXStrings", "Latexify", "Markdown", "PlutoLinks", "PlutoUI", "Random"]
-git-tree-sha1 = "542de5acb35585afcf202a6d3361b430bc1c3fbd"
+git-tree-sha1 = "d8be3432505c2febcea02f44e5f4396fae017503"
 uuid = "661c6b06-c737-4d37-b85c-46df65de6f69"
-version = "0.2.13"
+version = "0.2.3"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
-git-tree-sha1 = "e47cd150dbe0443c3a3651bc5b9cbd5576ab75b7"
+git-tree-sha1 = "efc140104e6d0ae3e7e30d56c98c4a927154d684"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.52"
-
-[[deps.PrecompileTools]]
-deps = ["Preferences"]
-git-tree-sha1 = "03b4c25b43cb84cee5c90aa9b5ea0a78fd848d2f"
-uuid = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
-version = "1.2.0"
+version = "0.7.48"
 
 [[deps.Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "00805cd429dcb4870060ff49ef443486c262e38e"
+git-tree-sha1 = "47e5f437cc0e7ef2ce8406ce1e7e24d44915f88d"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.4.1"
+version = "1.3.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -1733,17 +1638,17 @@ uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 deps = ["Printf"]
 uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 
-[[deps.ProgressLogging]]
-deps = ["Logging", "SHA", "UUIDs"]
-git-tree-sha1 = "80d919dee55b9c50e8d9e2da5eeafff3fe58b539"
-uuid = "33c8b6b6-d38a-422a-b730-caa89a2f386c"
-version = "0.1.4"
+[[deps.ProgressMeter]]
+deps = ["Distributed", "Printf"]
+git-tree-sha1 = "d7a7aef8f8f2d537104f170139553b14dfe39fe9"
+uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
+version = "1.7.2"
 
-[[deps.Qt6Base_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Vulkan_Loader_jll", "Xorg_libSM_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_cursor_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "libinput_jll", "xkbcommon_jll"]
-git-tree-sha1 = "7c29f0e8c575428bd84dc3c72ece5178caa67336"
-uuid = "c0090381-4147-56d7-9ebc-da0b1113ec56"
-version = "6.5.2+2"
+[[deps.QOI]]
+deps = ["ColorTypes", "FileIO", "FixedPointNumbers"]
+git-tree-sha1 = "18e8f4d1426e965c7b532ddd260599e1510d26ce"
+uuid = "4b34888f-f399-49d4-9bb3-47ed5cae4e65"
+version = "1.0.0"
 
 [[deps.REPL]]
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
@@ -1753,40 +1658,10 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
-[[deps.Random123]]
-deps = ["Random", "RandomNumbers"]
-git-tree-sha1 = "552f30e847641591ba3f39fd1bed559b9deb0ef3"
-uuid = "74087812-796a-5b5d-8853-05524746bad3"
-version = "1.6.1"
-
-[[deps.RandomNumbers]]
-deps = ["Random", "Requires"]
-git-tree-sha1 = "043da614cc7e95c703498a491e2c21f58a2b8111"
-uuid = "e6cf234a-135c-5ec9-84dd-332b85af5143"
-version = "1.5.3"
-
-[[deps.RecipesBase]]
-deps = ["PrecompileTools"]
-git-tree-sha1 = "5c3d09cc4f31f5fc6af001c250bf1278733100ff"
-uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
-version = "1.3.4"
-
-[[deps.RecipesPipeline]]
-deps = ["Dates", "NaNMath", "PlotUtils", "PrecompileTools", "RecipesBase"]
-git-tree-sha1 = "45cf9fd0ca5839d06ef333c8201714e888486342"
-uuid = "01d81517-befc-4cb6-b9ec-a95719d0359c"
-version = "0.6.12"
-
 [[deps.Reexport]]
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
 uuid = "189a3867-3050-52da-a836-e630ba90ab69"
 version = "1.2.2"
-
-[[deps.RelocatableFolders]]
-deps = ["SHA", "Scratch"]
-git-tree-sha1 = "ffdaf70d81cf6ff22c2b6e733c900c3321cab864"
-uuid = "05181044-ff0b-4ac5-8273-598c1e38db00"
-version = "1.0.1"
 
 [[deps.Requires]]
 deps = ["UUIDs"]
@@ -1796,105 +1671,55 @@ version = "1.3.0"
 
 [[deps.Revise]]
 deps = ["CodeTracking", "Distributed", "FileWatching", "JuliaInterpreter", "LibGit2", "LoweredCodeUtils", "OrderedCollections", "Pkg", "REPL", "Requires", "UUIDs", "Unicode"]
-git-tree-sha1 = "609c26951d80551620241c3d7090c71a73da75ab"
+git-tree-sha1 = "dad726963ecea2d8a81e26286f625aee09a91b7c"
 uuid = "295af30f-e4ad-537b-8983-00126c2a3abe"
-version = "3.5.6"
+version = "3.4.0"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 version = "0.7.0"
 
-[[deps.Scratch]]
-deps = ["Dates"]
-git-tree-sha1 = "30449ee12237627992a99d5e30ae63e4d78cd24a"
-uuid = "6c6a2e73-6563-6170-7368-637461726353"
-version = "1.2.0"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
-[[deps.Showoff]]
-deps = ["Dates", "Grisu"]
-git-tree-sha1 = "91eddf657aca81df9ae6ceb20b959ae5653ad1de"
-uuid = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
-version = "1.0.3"
-
-[[deps.SimpleBufferStream]]
-git-tree-sha1 = "874e8867b33a00e784c8a7e4b60afe9e037b74e1"
-uuid = "777ac1f9-54b0-4bf8-805c-2214025038e7"
-version = "1.1.0"
+[[deps.Sixel]]
+deps = ["Dates", "FileIO", "ImageCore", "IndirectArrays", "OffsetArrays", "REPL", "libsixel_jll"]
+git-tree-sha1 = "8fb59825be681d451c246a795117f317ecbcaa28"
+uuid = "45858cf5-a6b0-47a3-bbea-62219f50df47"
+version = "0.1.2"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
-[[deps.SortingAlgorithms]]
-deps = ["DataStructures"]
-git-tree-sha1 = "c60ec5c62180f27efea3ba2908480f8055e17cee"
-uuid = "a2af1166-a08f-5f64-846c-94a0d3cef48c"
-version = "1.1.1"
-
 [[deps.SparseArrays]]
-deps = ["Libdl", "LinearAlgebra", "Random", "Serialization", "SuiteSparse_jll"]
+deps = ["LinearAlgebra", "Random"]
 uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[deps.SpecialFunctions]]
-deps = ["IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
-git-tree-sha1 = "e2cfc4012a19088254b3950b85c3c1d8882d864d"
+deps = ["ChainRulesCore", "IrrationalConstants", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
+git-tree-sha1 = "d75bda01f8c31ebb72df80a46c88b25d1c79c56d"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "2.3.1"
+version = "2.1.7"
 
-    [deps.SpecialFunctions.extensions]
-    SpecialFunctionsChainRulesCoreExt = "ChainRulesCore"
-
-    [deps.SpecialFunctions.weakdeps]
-    ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-
-[[deps.StaticArrays]]
-deps = ["LinearAlgebra", "Random", "StaticArraysCore"]
-git-tree-sha1 = "0adf069a2a490c47273727e029371b31d44b72b2"
-uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.6.5"
-weakdeps = ["Statistics"]
-
-    [deps.StaticArrays.extensions]
-    StaticArraysStatisticsExt = "Statistics"
-
-[[deps.StaticArraysCore]]
-git-tree-sha1 = "36b3d696ce6366023a0ea192b4cd442268995a0d"
-uuid = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
-version = "1.4.2"
+[[deps.StackViews]]
+deps = ["OffsetArrays"]
+git-tree-sha1 = "46e589465204cd0c08b4bd97385e4fa79a0c770c"
+uuid = "cae243ae-269e-4f55-b966-ac2d0dc13c15"
+version = "0.1.1"
 
 [[deps.Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]
 uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-version = "1.9.0"
-
-[[deps.StatsAPI]]
-deps = ["LinearAlgebra"]
-git-tree-sha1 = "1ff449ad350c9c4cbc756624d6f8a8c3ef56d3ed"
-uuid = "82ae8749-77ed-4fe6-ae5f-f523153014b0"
-version = "1.7.0"
-
-[[deps.StatsBase]]
-deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "1d77abd07f617c4868c33d4f5b9e1dbb2643c9cf"
-uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.34.2"
-
-[[deps.SuiteSparse_jll]]
-deps = ["Artifacts", "Libdl", "Pkg", "libblastrampoline_jll"]
-uuid = "bea87d4a-7f5b-5778-9afe-8cc45184846c"
-version = "5.10.1+6"
 
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
-version = "1.0.3"
+version = "1.0.0"
 
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
-version = "1.10.0"
+version = "1.10.1"
 
 [[deps.TensorCore]]
 deps = ["LinearAlgebra"]
@@ -1906,27 +1731,21 @@ version = "0.1.1"
 deps = ["InteractiveUtils", "Logging", "Random", "Serialization"]
 uuid = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[[deps.TimerOutputs]]
-deps = ["ExprTools", "Printf"]
-git-tree-sha1 = "f548a9e9c490030e545f72074a41edfd0e5bcdd7"
-uuid = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
-version = "0.5.23"
-
-[[deps.TranscodingStreams]]
-deps = ["Random", "Test"]
-git-tree-sha1 = "9a6ae7ed916312b41236fcef7e0af564ef934769"
-uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
-version = "0.9.13"
+[[deps.TiffImages]]
+deps = ["ColorTypes", "DataStructures", "DocStringExtensions", "FileIO", "FixedPointNumbers", "IndirectArrays", "Inflate", "Mmap", "OffsetArrays", "PkgVersion", "ProgressMeter", "UUIDs"]
+git-tree-sha1 = "70e6d2da9210371c927176cb7a56d41ef1260db7"
+uuid = "731e570b-9d59-4bfa-96dc-6df516fadf69"
+version = "0.6.1"
 
 [[deps.Tricks]]
-git-tree-sha1 = "eae1bb484cd63b36999ee58be2de6c178105112f"
+git-tree-sha1 = "6bac775f2d42a611cdfcd1fb217ee719630c4175"
 uuid = "410a4b4d-49e4-4fbc-ab6d-cb71b17b3775"
-version = "0.1.8"
+version = "0.1.6"
 
 [[deps.URIs]]
-git-tree-sha1 = "b7a5e99f24892b6824a954199a45e9ffcc1c70f0"
+git-tree-sha1 = "e59ecc5a41b000fa94423a578d29290c7266fc10"
 uuid = "5c2747f8-b7ea-4ff2-ba2e-563bfd36b1d4"
-version = "1.5.0"
+version = "1.4.0"
 
 [[deps.UUIDs]]
 deps = ["Random", "SHA"]
@@ -1935,291 +1754,15 @@ uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 [[deps.Unicode]]
 uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
-[[deps.UnicodeFun]]
-deps = ["REPL"]
-git-tree-sha1 = "53915e50200959667e78a92a418594b428dffddf"
-uuid = "1cfade01-22cf-5700-b092-accc4b62d6e1"
-version = "0.4.1"
-
-[[deps.Unitful]]
-deps = ["Dates", "LinearAlgebra", "Random"]
-git-tree-sha1 = "a72d22c7e13fe2de562feda8645aa134712a87ee"
-uuid = "1986cc42-f94f-5a68-af5c-568840ba703d"
-version = "1.17.0"
-
-    [deps.Unitful.extensions]
-    ConstructionBaseUnitfulExt = "ConstructionBase"
-    InverseFunctionsUnitfulExt = "InverseFunctions"
-
-    [deps.Unitful.weakdeps]
-    ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
-    InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
-
-[[deps.UnitfulLatexify]]
-deps = ["LaTeXStrings", "Latexify", "Unitful"]
-git-tree-sha1 = "e2d817cc500e960fdbafcf988ac8436ba3208bfd"
-uuid = "45397f5d-5981-4c77-b2b3-fc36d6e9b728"
-version = "1.6.3"
-
-[[deps.UnsafeAtomics]]
-git-tree-sha1 = "6331ac3440856ea1988316b46045303bef658278"
-uuid = "013be700-e6cd-48c3-b4a1-df204f14c38f"
-version = "0.2.1"
-
-[[deps.UnsafeAtomicsLLVM]]
-deps = ["LLVM", "UnsafeAtomics"]
-git-tree-sha1 = "ead6292c02aab389cb29fe64cc9375765ab1e219"
-uuid = "d80eeb9a-aca5-4d75-85e5-170c8b632249"
-version = "0.1.1"
-
-[[deps.Unzip]]
-git-tree-sha1 = "ca0969166a028236229f63514992fc073799bb78"
-uuid = "41fe7b60-77ed-43a1-b4f0-825fd5a5650d"
-version = "0.2.0"
-
-[[deps.Vulkan_Loader_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Wayland_jll", "Xorg_libX11_jll", "Xorg_libXrandr_jll", "xkbcommon_jll"]
-git-tree-sha1 = "2f0486047a07670caad3a81a075d2e518acc5c59"
-uuid = "a44049a8-05dd-5a78-86c9-5fde0876e88c"
-version = "1.3.243+0"
-
-[[deps.Wayland_jll]]
-deps = ["Artifacts", "EpollShim_jll", "Expat_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Pkg", "XML2_jll"]
-git-tree-sha1 = "7558e29847e99bc3f04d6569e82d0f5c54460703"
-uuid = "a2964d1f-97da-50d4-b82a-358c7fce9d89"
-version = "1.21.0+1"
-
-[[deps.Wayland_protocols_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "4528479aa01ee1b3b4cd0e6faef0e04cf16466da"
-uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
-version = "1.25.0+0"
-
-[[deps.XML2_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Libiconv_jll", "Zlib_jll"]
-git-tree-sha1 = "24b81b59bd35b3c42ab84fa589086e19be919916"
-uuid = "02c8fc9c-b97f-50b9-bbe4-9be30ff0a78a"
-version = "2.11.5+0"
-
-[[deps.XSLT_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Libgcrypt_jll", "Libgpg_error_jll", "Libiconv_jll", "Pkg", "XML2_jll", "Zlib_jll"]
-git-tree-sha1 = "91844873c4085240b95e795f692c4cec4d805f8a"
-uuid = "aed1982a-8fda-507f-9586-7b0439959a61"
-version = "1.1.34+0"
-
-[[deps.XZ_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "cf2c7de82431ca6f39250d2fc4aacd0daa1675c0"
-uuid = "ffd25f8a-64ca-5728-b0f7-c24cf3aae800"
-version = "5.4.4+0"
-
-[[deps.Xorg_libICE_jll]]
-deps = ["Libdl", "Pkg"]
-git-tree-sha1 = "e5becd4411063bdcac16be8b66fc2f9f6f1e8fe5"
-uuid = "f67eecfb-183a-506d-b269-f58e52b52d7c"
-version = "1.0.10+1"
-
-[[deps.Xorg_libSM_jll]]
-deps = ["Libdl", "Pkg", "Xorg_libICE_jll"]
-git-tree-sha1 = "4a9d9e4c180e1e8119b5ffc224a7b59d3a7f7e18"
-uuid = "c834827a-8449-5923-a945-d239c165b7dd"
-version = "1.2.3+0"
-
-[[deps.Xorg_libX11_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_libxcb_jll", "Xorg_xtrans_jll"]
-git-tree-sha1 = "afead5aba5aa507ad5a3bf01f58f82c8d1403495"
-uuid = "4f6342f7-b3d2-589e-9d20-edeb45f2b2bc"
-version = "1.8.6+0"
-
-[[deps.Xorg_libXau_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "6035850dcc70518ca32f012e46015b9beeda49d8"
-uuid = "0c0b7dd1-d40b-584c-a123-a41640f87eec"
-version = "1.0.11+0"
-
-[[deps.Xorg_libXcursor_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXfixes_jll", "Xorg_libXrender_jll"]
-git-tree-sha1 = "12e0eb3bc634fa2080c1c37fccf56f7c22989afd"
-uuid = "935fb764-8cf2-53bf-bb30-45bb1f8bf724"
-version = "1.2.0+4"
-
-[[deps.Xorg_libXdmcp_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "34d526d318358a859d7de23da945578e8e8727b7"
-uuid = "a3789734-cfe1-5b06-b2d0-1dd0d9d62d05"
-version = "1.1.4+0"
-
-[[deps.Xorg_libXext_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
-git-tree-sha1 = "b7c0aa8c376b31e4852b360222848637f481f8c3"
-uuid = "1082639a-0dae-5f34-9b06-72781eeb8cb3"
-version = "1.3.4+4"
-
-[[deps.Xorg_libXfixes_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
-git-tree-sha1 = "0e0dc7431e7a0587559f9294aeec269471c991a4"
-uuid = "d091e8ba-531a-589c-9de9-94069b037ed8"
-version = "5.0.3+4"
-
-[[deps.Xorg_libXi_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll", "Xorg_libXfixes_jll"]
-git-tree-sha1 = "89b52bc2160aadc84d707093930ef0bffa641246"
-uuid = "a51aa0fd-4e3c-5386-b890-e753decda492"
-version = "1.7.10+4"
-
-[[deps.Xorg_libXinerama_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll"]
-git-tree-sha1 = "26be8b1c342929259317d8b9f7b53bf2bb73b123"
-uuid = "d1454406-59df-5ea1-beac-c340f2130bc3"
-version = "1.1.4+4"
-
-[[deps.Xorg_libXrandr_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll"]
-git-tree-sha1 = "34cea83cb726fb58f325887bf0612c6b3fb17631"
-uuid = "ec84b674-ba8e-5d96-8ba1-2a689ba10484"
-version = "1.5.2+4"
-
-[[deps.Xorg_libXrender_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
-git-tree-sha1 = "19560f30fd49f4d4efbe7002a1037f8c43d43b96"
-uuid = "ea2f1a96-1ddc-540d-b46f-429655e07cfa"
-version = "0.9.10+4"
-
-[[deps.Xorg_libpthread_stubs_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "8fdda4c692503d44d04a0603d9ac0982054635f9"
-uuid = "14d82f49-176c-5ed1-bb49-ad3f5cbd8c74"
-version = "0.1.1+0"
-
-[[deps.Xorg_libxcb_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "XSLT_jll", "Xorg_libXau_jll", "Xorg_libXdmcp_jll", "Xorg_libpthread_stubs_jll"]
-git-tree-sha1 = "b4bfde5d5b652e22b9c790ad00af08b6d042b97d"
-uuid = "c7cfdc94-dc32-55de-ac96-5a1b8d977c5b"
-version = "1.15.0+0"
-
-[[deps.Xorg_libxkbfile_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_libX11_jll"]
-git-tree-sha1 = "730eeca102434283c50ccf7d1ecdadf521a765a4"
-uuid = "cc61e674-0454-545c-8b26-ed2c68acab7a"
-version = "1.1.2+0"
-
-[[deps.Xorg_xcb_util_cursor_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_jll", "Xorg_xcb_util_renderutil_jll"]
-git-tree-sha1 = "04341cb870f29dcd5e39055f895c39d016e18ccd"
-uuid = "e920d4aa-a673-5f3a-b3d7-f755a4d47c43"
-version = "0.1.4+0"
-
-[[deps.Xorg_xcb_util_image_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
-git-tree-sha1 = "0fab0a40349ba1cba2c1da699243396ff8e94b97"
-uuid = "12413925-8142-5f55-bb0e-6d7ca50bb09b"
-version = "0.4.0+1"
-
-[[deps.Xorg_xcb_util_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libxcb_jll"]
-git-tree-sha1 = "e7fd7b2881fa2eaa72717420894d3938177862d1"
-uuid = "2def613f-5ad1-5310-b15b-b15d46f528f5"
-version = "0.4.0+1"
-
-[[deps.Xorg_xcb_util_keysyms_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
-git-tree-sha1 = "d1151e2c45a544f32441a567d1690e701ec89b00"
-uuid = "975044d2-76e6-5fbe-bf08-97ce7c6574c7"
-version = "0.4.0+1"
-
-[[deps.Xorg_xcb_util_renderutil_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
-git-tree-sha1 = "dfd7a8f38d4613b6a575253b3174dd991ca6183e"
-uuid = "0d47668e-0667-5a69-a72c-f761630bfb7e"
-version = "0.3.9+1"
-
-[[deps.Xorg_xcb_util_wm_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_xcb_util_jll"]
-git-tree-sha1 = "e78d10aab01a4a154142c5006ed44fd9e8e31b67"
-uuid = "c22f9ab0-d5fe-5066-847c-f4bb1cd4e361"
-version = "0.4.1+1"
-
-[[deps.Xorg_xkbcomp_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_libxkbfile_jll"]
-git-tree-sha1 = "330f955bc41bb8f5270a369c473fc4a5a4e4d3cb"
-uuid = "35661453-b289-5fab-8a00-3d9160c6a3a4"
-version = "1.4.6+0"
-
-[[deps.Xorg_xkeyboard_config_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Xorg_xkbcomp_jll"]
-git-tree-sha1 = "691634e5453ad362044e2ad653e79f3ee3bb98c3"
-uuid = "33bec58e-1273-512f-9401-5d533626f822"
-version = "2.39.0+0"
-
-[[deps.Xorg_xtrans_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "e92a1a012a10506618f10b7047e478403a046c77"
-uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
-version = "1.5.0+0"
-
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.13+0"
-
-[[deps.Zstd_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "49ce682769cd5de6c72dcf1b94ed7790cd08974c"
-uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
-version = "1.5.5+0"
-
-[[deps.eudev_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "gperf_jll"]
-git-tree-sha1 = "431b678a28ebb559d224c0b6b6d01afce87c51ba"
-uuid = "35ca27e7-8b34-5b7f-bca9-bdc33f59eb06"
-version = "3.2.9+0"
-
-[[deps.fzf_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "868e669ccb12ba16eaf50cb2957ee2ff61261c56"
-uuid = "214eeab7-80f7-51ab-84ad-2988db7cef09"
-version = "0.29.0+0"
-
-[[deps.gperf_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "3516a5630f741c9eecb3720b1ec9d8edc3ecc033"
-uuid = "1a1c6b14-54f6-533d-8383-74cd7377aa70"
-version = "3.1.1+0"
-
-[[deps.libaom_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "3a2ea60308f0996d26f1e5354e10c24e9ef905d4"
-uuid = "a4ae2306-e953-59d6-aa16-d00cac43593b"
-version = "3.4.0+0"
-
-[[deps.libass_jll]]
-deps = ["Artifacts", "Bzip2_jll", "FreeType2_jll", "FriBidi_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "5982a94fcba20f02f42ace44b9894ee2b140fe47"
-uuid = "0ac62f75-1d6f-5e53-bd7c-93b484bb37c0"
-version = "0.15.1+0"
+version = "1.2.12+3"
 
 [[deps.libblastrampoline_jll]]
-deps = ["Artifacts", "Libdl"]
+deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.8.0+0"
-
-[[deps.libevdev_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "141fe65dc3efabb0b1d5ba74e91f6ad26f84cc22"
-uuid = "2db6ffa8-e38f-5e21-84af-90c45d0032cc"
-version = "1.11.0+0"
-
-[[deps.libfdk_aac_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "daacc84a041563f965be61859a36e17c4e4fcd55"
-uuid = "f638f0a6-7fb0-5443-88ba-1cc74229b280"
-version = "2.0.2+0"
-
-[[deps.libinput_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "eudev_jll", "libevdev_jll", "mtdev_jll"]
-git-tree-sha1 = "ad50e5b90f222cfe78aa3d5183a20a12de1322ce"
-uuid = "36db933b-70db-51c0-b978-0f229ee0e533"
-version = "1.18.0+0"
+version = "5.1.1+0"
 
 [[deps.libpng_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Zlib_jll"]
@@ -2227,17 +1770,11 @@ git-tree-sha1 = "94d180a6d2b5e55e447e2d27a29ed04fe79eb30c"
 uuid = "b53b4c65-9356-5827-b1ea-8c7a1a84506f"
 version = "1.6.38+0"
 
-[[deps.libvorbis_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Ogg_jll", "Pkg"]
-git-tree-sha1 = "b910cb81ef3fe6e78bf6acee440bda86fd6ae00c"
-uuid = "f27f6e37-5d2b-51aa-960f-b287f2bc3b7a"
-version = "1.3.7+1"
-
-[[deps.mtdev_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "814e154bdb7be91d78b6802843f76b6ece642f11"
-uuid = "009596ad-96f7-51b1-9f1b-5ce2d5e8a71e"
-version = "1.1.6+0"
+[[deps.libsixel_jll]]
+deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Pkg", "libpng_jll"]
+git-tree-sha1 = "d4f63314c8aa1e48cd22aa0c17ed76cd1ae48c3c"
+uuid = "075b6546-f08a-558a-be8f-8157d0f608a5"
+version = "1.10.3+0"
 
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
@@ -2248,156 +1785,158 @@ version = "1.48.0+0"
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 version = "17.4.0+0"
-
-[[deps.x264_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "4fea590b89e6ec504593146bf8b988b2c00922b2"
-uuid = "1270edf5-f2f9-52d2-97e9-ab00b5d0237a"
-version = "2021.5.5+0"
-
-[[deps.x265_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "ee567a171cce03570d77ad3a43e90218e38937a9"
-uuid = "dfaa095f-4041-5dcd-9319-2fabd8486b76"
-version = "3.5.0+0"
-
-[[deps.xkbcommon_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Wayland_jll", "Wayland_protocols_jll", "Xorg_libxcb_jll", "Xorg_xkeyboard_config_jll"]
-git-tree-sha1 = "9c304562909ab2bab0262639bd4f444d7bc2be37"
-uuid = "d8fb68d0-12a3-5cfd-a85a-d49703b185fd"
-version = "1.4.1+1"
 """
 
 # ╔═╡ Cell order:
-# ╠═f984ae77-cd98-4002-bdbf-c532ad9fc1c6
-# ╠═5803a81e-5b75-11ed-08ff-17c142080826
-# ╠═a353c90a-32c5-4cf7-aa3a-0a9c0e7e4f47
-# ╟─d79b1c88-73f6-462f-8bab-07c311c9cac1
-# ╟─45e5d832-a12b-4512-903a-80899f3cc2a4
-# ╟─6f256181-b70d-41f5-a0cf-8fbf0ff94ed4
-# ╟─8072b6c7-548c-4d8d-aac1-cf6ce268970b
-# ╟─2ae0f053-a759-4f09-b265-143003a7da1e
-# ╠═ec43be3f-2ae1-41fa-b630-4de63271fbb3
-# ╠═2e70ac93-80ac-44bb-a7e0-06a89a2a0188
-# ╟─0c98d84e-00f4-43ce-847f-f1a3ff9b4e2a
-# ╟─a89ec761-8c1d-4984-944f-2e3b1cc7dbe9
-# ╠═ee3e173f-a8d7-490d-966b-213c9678c99c
-# ╟─db911c10-4f16-4a9b-ae75-77ed4b0fbcc7
-# ╠═e1af9a3e-792d-4557-b889-e38c95a8860a
-# ╟─41589942-1d0d-42cc-8523-24e582b3d3f6
-# ╠═71da98e7-b7a3-4b82-a551-5953ce001f73
-# ╟─fc307c99-4444-4e9f-8194-c60634286b4e
-# ╟─7652a2bd-27e9-4d47-93b5-4ada74516524
-# ╠═5b752d74-be2a-4e04-9a38-b566a28bf8a4
-# ╟─333f28a1-0ae7-4933-a25d-dfea1f08d20b
-# ╠═1ceffc88-f8a4-4b14-b7cb-23ca8e7a796e
-# ╟─5e0b101f-a9fe-4702-9c7c-bf199c3ebf10
-# ╠═56badd88-f661-4a6d-95b4-1c62709ada38
-# ╟─09156ec4-2146-4f8d-a5ac-7fed1951d9d1
-# ╟─4d636f82-8330-41fe-80fc-e96bb66e503a
-# ╟─a35a7ec2-9ebf-4cdc-9ae4-b7954302fe20
-# ╠═18e3412d-2195-4db7-b4dc-f8eeda903d49
-# ╠═44bf3996-78e5-4b20-830e-5ae1a87aacfc
-# ╠═b7a09982-c27b-44ea-a3b6-447d0b5a2f8c
-# ╟─359d45f7-ca56-4249-a973-eb200249dc25
-# ╟─a9751721-6f63-44e3-ace5-9f01dcff0350
-# ╠═07e18600-b466-44fc-9835-ff2d4b0fd80f
-# ╠═1d497d40-7e84-45e4-a914-5e443d51ff45
-# ╠═9c4f44ef-fb59-4a21-950e-68eb456952e7
-# ╟─1e71d8ef-389d-46fe-8c34-976ac3b64b5e
-# ╟─333c4431-248c-44f6-a2f3-77d881bf4c7e
-# ╟─db22c241-d99a-44e4-b5a2-c0283dc5d61a
-# ╟─438c1219-2171-466d-a425-f20fc775d856
-# ╟─9ee41c2b-e4f3-4da2-b772-243f77cd5587
-# ╟─049b57c3-9dd2-45ae-8b9f-438e7c896ac4
-# ╠═52ed22c5-ef4e-4248-9615-3b250e5f83af
-# ╠═880659cd-1766-489b-8c9c-f5408b7cf760
-# ╟─fad5383e-83aa-4dbe-bbd7-67a9bef27cec
-# ╠═f216ae0d-eff2-4abf-b4bc-877f613dd1b1
-# ╟─fa62fdab-36b4-4fc2-aee6-b4f2ee72be8d
-# ╟─aceaf48e-2be3-4fde-855f-62e1a8e4eea0
-# ╟─6952a006-605b-463a-8d51-dbcb5c957b48
-# ╠═2b9a78dd-fed1-4c82-8ef9-c18273639957
-# ╠═d99166df-efa3-417c-965b-9ff9273de575
-# ╠═06fb0635-9ae4-4c22-b61a-da0737bf0a6d
-# ╟─5e31e98e-0688-4b9d-aa81-0f49a793c71a
-# ╟─0333d1f7-be89-4a26-931b-372f3085c618
-# ╟─b7f9507f-b956-4453-ba66-4787d6b2b313
-# ╟─f4760fa0-a0b5-41e9-b49d-0bd9cc7e2782
-# ╠═eb61a025-c36f-4c96-bf3f-029bc3a2cecf
-# ╠═27f75a0b-3b90-4982-b411-2b7907f9b7d7
-# ╟─e7fbd945-bd94-4639-a9b2-ef2aa78f6600
-# ╟─e75d3a86-604f-4502-b72a-6220e1543b64
-# ╟─60907f8e-13a2-4b31-bf6f-6a7e06eacc01
-# ╟─c2112a28-3b1a-4f1d-a9c3-474a20e6b1b1
-# ╟─6fb37947-c4dd-4807-9369-7e1d67b23b9e
-# ╠═ab60a366-44a3-4898-8b46-25a3d0fb7a38
-# ╟─63fb4bd2-a25c-4f4b-aa26-17cf9dbbd64c
-# ╟─7cd14a96-7894-4ed1-b002-48644f7c65ab
-# ╠═a44627dc-fdb5-478b-a695-11a2eb02d7f1
-# ╟─2c644f2a-6416-4a0e-8e38-2b4ef097abc3
-# ╠═f32302b6-ead0-4a56-b0df-1776816815e3
-# ╟─41fee41a-8b78-4337-aa37-b638a24448fb
-# ╠═e2365d69-217f-46c8-8058-fcb2449f01aa
-# ╟─3b6ff29a-0d42-4441-ba49-f0e5adfbb583
-# ╟─a3eea236-a688-433a-8a22-ccffc37ce4af
-# ╟─d62e68e2-13be-48f8-9599-49e358dbde59
-# ╠═7df074c1-1f24-475d-b446-1c16f9c86538
-# ╠═95dfeb17-7134-41e1-8015-dc14845f369a
-# ╟─570e7ebe-252f-4cd7-b3a5-31232e5642ec
-# ╟─d8611f20-387b-40d1-9490-f7bf0a93a437
-# ╟─56bac60c-65ff-4b5c-a5ca-29a723a79d89
-# ╟─51041f7e-19ce-482d-b993-4b9d80e0745c
-# ╠═a151f96e-ab07-4b51-9213-45c36e588ab0
-# ╟─c736fb2c-3afc-456d-a0fa-44caa067dd2d
-# ╟─85be94f8-452b-4fdc-a195-4e9e474b83b8
-# ╠═150b90bd-47bb-4f34-ba88-ba3e1d458811
-# ╟─a8fa5ee2-0b88-4760-a7c1-3e7b8a31d6a2
-# ╟─a85927b0-152a-4a55-a23b-0ff560c40ead
-# ╟─e57cb666-08fd-40b1-9cff-fd19b82563d7
-# ╠═d7a4e9c6-2a39-4004-b3a6-0beb63d34a47
-# ╠═51ad839c-42cd-4da5-a92c-a6e047fd4ec8
-# ╟─b1f56b3f-85dc-4580-aa30-ef2ba0021c4d
-# ╟─8339952b-9ff4-48aa-9509-2740d1aaac8c
-# ╟─38697a0b-0f70-4101-b7e1-c37d3ad98fbb
-# ╟─9b65f47f-f569-4aee-9250-af169d13d604
-# ╟─01b6edaf-a83f-429f-9108-35b43f6d299c
-# ╟─8429ef19-3306-4d85-b8f6-194a04711dd2
-# ╠═2087f4f2-9d85-4358-bf7f-9ea53db7eead
-# ╠═ac093aed-406b-4e78-b746-d61ee37829e7
-# ╟─e7dc5fd6-6b12-453e-9ccf-910af73850e6
-# ╠═2228ceb5-1f53-4e68-9913-e2edafa0979f
-# ╠═5559bdac-56be-4230-a7e0-2efcc14d03e0
-# ╠═e7ea34ed-4dd5-4fa8-806f-af157bfb6590
-# ╠═4a0cba53-3e9c-4277-9a30-7455741a5f50
-# ╠═51061846-6f58-479b-ab24-0a773c2af034
-# ╟─fe4b8a41-02a2-4c7f-996f-6913fc62713e
-# ╠═23ef2c59-6301-4e42-81e2-6c4481f4bb9b
-# ╟─3cd38682-aa95-4d27-831f-814641b92754
-# ╟─903e087d-a77e-4c56-9761-05c54a0cc81c
-# ╠═48da2f41-d9e2-4c8b-b23f-9d7e1346769f
-# ╠═17c5ee50-7baa-4d28-a39a-b9f58eaf7f0a
-# ╟─960288de-ab52-4bae-baa2-6c582c26c2b2
-# ╟─cc734b56-93b2-40c3-acbb-2d18b028ae21
-# ╠═cc92ac8f-8430-4ee1-8090-31b4dbd0253b
-# ╠═9ffe6c48-20f7-4866-af2e-22977315fa60
-# ╟─3fc6b27e-ad34-4fa2-8405-91261d7b3384
-# ╟─c1ad1392-005d-4c99-826f-be9c7c240f88
-# ╟─4a330f54-a220-466c-af5e-ad70d5387d5b
-# ╠═3313e718-9cd2-41d9-8615-b72871f9fda5
-# ╠═904e5a60-65ce-419e-9f8c-32b29a98d0f4
-# ╟─09d5ed7f-5c78-470b-a832-d6ce951dc8a2
-# ╟─449d8103-dc1f-4496-bd90-a4718d9f30ea
-# ╟─0b60df5e-732d-47cb-ad56-9c9a81fe374b
-# ╠═f8eef0e0-eaa8-4161-be01-b8551af21f1f
-# ╠═f83755c7-d6ff-4438-b9a5-659561d1b6dc
-# ╠═f7e8e7c9-d71d-48ee-9909-a6a5a4e06d1b
-# ╠═ba83ffdd-480e-496e-b8d6-4475cffd9ea8
-# ╠═04ac0905-2ab0-4e0c-abbb-343a96c10c16
-# ╟─a02b2923-bfb0-4cfa-bf05-c1e37d0f9420
-# ╟─4c1f3efe-2374-4471-ae5f-48d7eff4d379
-# ╠═2db23a84-50f2-4b28-9ea2-218cd850a157
-# ╠═dc7cfac4-2076-4b7b-b469-d3399cdb88e2
-# ╟─ccce9e18-a32f-49c7-9cdf-b465d999272e
+# ╠═d4f96362-7945-4a18-99dd-52a94f6cc65b
+# ╠═d5cd95f9-6728-47e2-bba4-00298c78d50c
+# ╠═0d4205ec-fec1-4ef4-af48-7dae51ab31ee
+# ╠═1b452080-14eb-41f7-969b-e2727af54fa3
+# ╟─c0f57380-f746-4d22-8403-8d9d4606012f
+# ╟─fedf534f-24b2-43ea-96dd-86f678987ec9
+# ╟─36976d68-1684-4123-a663-8b0407ee31ee
+# ╟─355479cd-7598-48e9-8283-da36d0e84393
+# ╟─33845853-3597-4998-b04b-c6886d64adea
+# ╟─36ba0cd6-61e7-46ea-92af-bec8758b2f0a
+# ╟─df267206-71ee-47b1-b732-5adbad023cea
+# ╟─e1d3d726-0f2b-437f-831c-521e9c105176
+# ╟─363b3a59-4e7c-4532-a52d-aa1ece8a2237
+# ╠═f205fe06-9849-435f-963c-d7596592c979
+# ╠═fab7a339-a43c-4209-b15a-fe64e670636f
+# ╟─fe962381-6010-4c9c-8893-c51ce0ce17e4
+# ╟─625b8ace-cbbc-4dfe-aa71-0d60ad9786b6
+# ╟─dc47f817-b451-4055-bb8e-3bd6687f0e3c
+# ╟─c6cf31d9-dfe1-4b9a-acb3-0ad199b7f03a
+# ╠═59381db6-4f7c-4255-9e4a-6b116d6542fa
+# ╠═f90861ce-0854-44aa-b064-d59b1d113528
+# ╟─641c4d16-445e-41e6-b978-b7acb2a31981
+# ╟─1fecaaac-7c37-4032-af5e-f784b9977765
+# ╟─36fc7d25-77b9-4088-b46c-6e718528ffa0
+# ╠═2bf674a4-d039-48af-8642-1160873b2f70
+# ╟─5e68a931-0306-4581-b256-a193658439a5
+# ╠═02f7ec49-1ab9-4ae0-a3ee-baee0dd25ea6
+# ╠═2d3f2591-3d7b-41b6-9129-777168379510
+# ╠═8686e348-f608-4b2f-aec5-c524444d6ce5
+# ╟─eb5404f6-8f4d-449e-959f-fc81debbef7f
+# ╟─ddf2584f-63e0-4fe7-a895-a850ed97a0b8
+# ╟─55d51ebf-8172-414f-b868-b7b24cbb787d
+# ╟─3403402f-7a4c-4d00-873e-17a44ca8f7aa
+# ╠═efa37d3b-b556-419e-a8ab-5e627975cca4
+# ╠═aef77331-eaea-4b34-a944-537f1c0b53a0
+# ╟─7d39ac63-708b-4374-902f-cedf3d9df384
+# ╠═e029e040-b0f9-41ed-9474-7f31bd21bf06
+# ╟─f6b41ff9-d362-469d-a714-2b85acba2b03
+# ╟─9177bb33-0240-41a7-8732-85b0471d5548
+# ╠═5e8c1a90-7461-4116-a6aa-fff4d8f2def6
+# ╟─f2a9da31-8c31-4a72-9f2b-9541ee3931fc
+# ╠═3f6001f1-3bf3-4a89-92ca-07a8ee0bab75
+# ╟─2befedaf-5fd2-471c-8e8b-574f741277ef
+# ╟─80030ad9-956d-464a-87d3-e5b6083e8113
+# ╠═d3f9486e-1ad5-4062-845a-76e6cfeb715c
+# ╠═1821f496-c065-468e-a206-c0fd2e75e539
+# ╟─8b896d3d-7796-468d-ae6e-553ed4eb84e4
+# ╟─af29b6cc-ed69-466d-98eb-62fa41806cae
+# ╟─7a2d0d30-4dc1-4701-bb7f-04ef9e46974a
+# ╟─4ea6b4f9-3f7c-4d23-b911-f7f2a4e23135
+# ╟─ffdca609-1047-46fa-a2d2-8ca0db26371f
+# ╠═28d69223-f7a3-4b9f-8eb9-8dc1239ba04a
+# ╠═def18cb7-29db-4de6-b896-69923c038f74
+# ╟─d44754fe-6c16-4561-9b4e-c64cad147b8d
+# ╟─4988e048-4846-498a-86b5-da54a61b247c
+# ╟─3407e79e-96bd-4425-8655-a6bbff21173b
+# ╟─26e252b6-956d-428f-9228-f705095ac946
+# ╠═51bdc11d-8bcb-4a31-b455-af176e4adf1a
+# ╟─20979a07-b6c9-4b7b-987f-266e900c8543
+# ╠═047d66ac-64fa-47e9-a566-89d840b8ea07
+# ╟─f0bec76f-d70b-41b0-859c-645a40b3733c
+# ╠═a94d571f-a983-474e-b4e2-f9044dd87be0
+# ╟─2b4b2084-1c38-490d-b3f8-215963b87d82
+# ╠═2af6a3a0-6ccc-40d6-9af1-9046551a85d1
+# ╟─f942b9c0-b40a-4d9f-aedb-73b1848d9709
+# ╟─2063fdfc-120b-4603-983f-f1abb2790ad2
+# ╠═a876ca5b-1b10-420e-b070-bfc5126e9065
+# ╠═bb3e3399-a7bc-49a2-8e10-88e6e7f82751
+# ╠═87300b00-cb9b-4584-8d17-fe9e8a9359de
+# ╠═d306cee2-6261-4125-8c5f-52d8e46f8a54
+# ╟─f3a64b98-e901-4f06-bdfc-0f2b99014049
+# ╟─fbcba267-24ed-461c-bd3e-4a3a8182c32c
+# ╠═0a0afd07-6ab4-418e-80e0-d0cc4eccce54
+# ╟─02d10c6b-a987-4f8f-ba00-45a38df9abe1
+# ╠═8151780e-6e83-473f-ae88-fb991ce35ec7
+# ╟─16061b47-c086-4f38-a6d8-685872504f72
+# ╟─de4508fc-7549-4ced-91cd-9f7166ebffc1
+# ╟─8f0da298-9bb4-491e-8be7-e8def8ded6e5
+# ╠═480252e0-0815-45b0-b1c4-51bdbd02561c
+# ╠═a201234a-65e0-42d9-8b4a-619243542cb7
+# ╠═e4c988de-2d03-43c8-ae5d-c708e76dc463
+# ╠═466cb64c-0570-4951-9c1e-31afec1aef49
+# ╠═bfad99bc-3805-4037-8f3b-600e978c3976
+# ╟─fa0c41c6-ad85-48e8-a9e0-d88539199355
+# ╟─4ec40d1a-66d6-4d3c-9e45-a7432082083f
+# ╟─b7ea1640-01e3-4f9b-9232-51764024dcb0
+# ╟─6e8b5dbe-4f1a-11ed-1d6d-898b90885e3d
+# ╟─047f32ac-c8bf-4f36-9f9c-3a4ab2998371
+# ╟─f1faf89a-58ef-445e-b7f3-cc15391a127e
+# ╟─7de00277-3dc9-4c87-8b4b-fcbeeed8656d
+# ╠═1eebce33-d71d-4a8d-be22-843e2ee283ea
+# ╠═9b8f0c49-aff6-4705-be09-134784bee7ad
+# ╠═83af51e5-b8d7-4487-9664-2052a7ef21c5
+# ╠═149140f0-8849-4011-adf9-b50b24052e16
+# ╟─7a3b31ea-dee5-4d90-96e5-83fcb4f98f53
+# ╟─7ec215a8-3f60-4752-833d-85dafc71ad3d
+# ╟─017d0901-9045-4622-bc73-13a74ecf38ad
+# ╟─6dce25d0-907c-45ec-a73d-6ed0948dd112
+# ╟─a4d6fe4b-cbac-4165-9467-606035bbf70f
+# ╟─8eb52f83-ff89-4dc0-a90f-99d1bfb59b20
+# ╟─a0a6bacc-26d9-4c65-b218-9616db10f856
+# ╟─c53630b5-0b7e-4fcb-ac96-affb16e1b9f0
+# ╟─5098783f-75fd-4373-9ad9-dd39b5a86aa8
+# ╠═0205887c-69ed-4e1e-84df-0d1b4b935ddc
+# ╟─3caa1420-97f9-40c7-bc0e-0243c845ee59
+# ╠═e49db03e-ca45-4c7f-a93c-bc679c1fd01a
+# ╠═a7096c5e-d409-490c-8caf-d064427a5265
+# ╟─563bc60a-019f-42be-a311-84547a851b81
+# ╟─7a0dc9b7-d4cc-415c-83a6-7d50f17d89f6
+# ╟─b5cdbbb4-b186-4124-be6a-be18bbc754ff
+# ╟─8f710f8a-afe2-454a-9f2c-15cfffb1c50e
+# ╠═27c38ade-61d3-409f-ad7a-16a2361397ce
+# ╠═d0a4f988-271c-41e0-a0c7-fd013eb8aabe
+# ╟─d2e80eee-db09-4711-b542-205b38248b57
+# ╟─f47a9a12-65ef-44f4-bc77-1b852f61986e
+# ╟─6e0c6e9f-ef00-44bb-956b-923af174000c
+# ╟─3ab919ee-6d9a-47e1-93fe-d1ce25c63236
+# ╠═85de703d-d9c9-40bc-a414-e8c3920800d7
+# ╠═499623fe-6a87-4b41-9f31-355c486c7ce4
+# ╟─447a7da7-c087-43fe-8abf-5b9079e711d8
+# ╟─f3de07e7-9421-4eb5-b52b-8c450ece3511
+# ╟─3c98b50b-decb-4e0a-88a4-a08166e450cc
+# ╠═388af3f8-527d-4f1a-ad21-2fb1295bc265
+# ╠═5ce016da-1336-49ae-8735-7e73f4ef9031
+# ╟─c4bdbbf9-1c7a-43ee-8a21-93d6324902f6
+# ╟─ae4bc271-0ca2-4d66-a8ca-cf63474aef0b
+# ╟─d93ca9c1-81f9-47dc-9b5c-8a682deb672e
+# ╟─9d4bb825-ec3f-4c12-9db0-8067d2facb25
+# ╠═7c5abef9-382a-4947-ab9f-c6e721828615
+# ╠═243ae79c-3a94-48f2-b9b4-11e7e74cbea8
+# ╠═0cd01e96-5cd6-4200-83e2-5dfd1fc874c2
+# ╟─659b2aa6-c95f-4d88-ae58-17f520250791
+# ╟─685fa229-5cd1-432b-8dc6-fe5beb47fa67
+# ╟─99c61fe1-6ac3-4e66-95a7-0750426f6eac
+# ╟─371bb174-3757-4809-8ec8-73ca27c5b3ba
+# ╟─b0bebbb7-83bc-456a-a125-206922b667bb
+# ╠═623889cd-937c-44e0-9e47-17d5eb05bb68
+# ╟─c6d3945c-9e16-4c4c-a07b-b7070226e936
+# ╠═b7e239c4-00e1-4083-983c-9364f3fdf57e
+# ╟─3baed377-7b8f-4d31-bc6b-84b41724e76c
+# ╠═06a7b2ed-1693-4a68-979d-2ff9eeda8d94
+# ╟─86daab2d-695c-4f62-9e8c-8dd13939e008
+# ╠═330aceeb-147a-423f-81ff-462c0cd3aeda
+# ╟─e902d91c-040b-4374-801b-a9f6e35abc4d
+# ╟─ede76efa-36aa-4e4a-820c-b223276e4a91
+# ╟─b4e13749-640f-49bf-baba-3e6bb877c2c3
+# ╟─3b82d62e-26ca-42a2-b8dd-2e2cf53666e6
+# ╠═2cbe52a4-9959-4a96-bf65-39223aacefc7
+# ╟─24d0d3a0-41d9-46b2-addb-2ef9292fb3a5
+# ╠═b4c91b27-d1a9-4a77-a47d-9ed2c477b05e
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
